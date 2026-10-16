@@ -268,8 +268,14 @@ waveWorld = modelMatrix * waveWorld;
 waveCenter = modelMatrix * waveCenter;
 float waveD = distance( waveCenter.xy, uWaveCenter );
 float waveCalm = smoothstep( 1.2, 3.2, distance( waveCenter.xy, uWavePlayer ) );
-float waveH = uWaveAmp * waveCalm * sin( waveD * 1.25 - uWaveTime * 3.0 ) / ( 1.0 + waveD * 0.035 );
-waveWorld.z += waveH;
+// Dalga finişten başlar: cephe saniyede 4 hücre ilerler, ulaşmadığı yer durur
+float waveFront = uWaveTime * 4.0;
+float waveReach = 1.0 - smoothstep( waveFront - 2.5, waveFront, waveD );
+float waveH = uWaveAmp * waveCalm * waveReach * sin( waveD * 1.0 - uWaveTime * 4.0 ) / ( 1.0 + waveD * 0.035 );
+// Görüş çizgisi boyunca ileri geri: parça ekranda yerinde kalır (kaymaz,
+// yamulmaz), öne gelince biraz büyür, geri gidince küçülür
+vec3 waveRay = normalize( cameraPosition - waveCenter.xyz );
+waveWorld.xyz += waveRay * ( waveH / max( waveRay.z, 0.2 ) );
 vWaveH = waveH / 0.4;
 vec4 mvPosition = viewMatrix * waveWorld;
 gl_Position = projectionMatrix * mvPosition;`,
