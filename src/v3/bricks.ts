@@ -60,15 +60,6 @@ export function tile(depth = 0.9) {
   return new RoundedBoxGeometry(1, 1, depth, 4, 0.14)
 }
 
-/** Kristal mücevher parçası (elmas yerine): yuvarlak kesimli şeffaf taş. */
-export function jewel() {
-  const crown = new THREE.CylinderGeometry(0.2, 0.33, 0.16, 10, 1).rotateX(Math.PI / 2).translate(0, 0, 0.08)
-  const pav = new THREE.CylinderGeometry(0.33, 0.05, 0.26, 10, 1).rotateX(Math.PI / 2).rotateX(Math.PI).translate(0, 0, -0.13)
-  const g = mergeGeometries([crown.toNonIndexed(), pav.toNonIndexed()])!
-  g.computeVertexNormals()
-  return g
-}
-
 /** Resimdeki gibi hilal desenli mor arka plan. */
 export function moonTexture() {
   const c = document.createElement('canvas')
@@ -292,4 +283,46 @@ diffuseColor.rgb *= 1.0 + min( vWaveH, 0.0 ) * 0.45;`,
       )
   }
   mat.customProgramCacheKey = () => 'wave-v3'
+}
+
+// --- Toplanacak küçük robot (elmas yerine) ---
+const ROBOT = { white: '#f3f5fa', blue: '#1f5fd0', silver: '#c3c9d3', grey: '#7a808c', black: '#15161a', red: '#ff2a2a' }
+
+function part(g: THREE.BufferGeometry, color: string) {
+  return paint(nonIndexed(g), new THREE.Color(color))
+}
+
+/** Robot gövdesi: beyaz silindir, mavi paneller, iki yan bacak ve ayaklar. Merkez hücre ortası. */
+export function robotBody() {
+  const parts = [
+    part(new THREE.CylinderGeometry(0.21, 0.21, 0.38, 28).translate(0, -0.05, 0), ROBOT.white),
+    part(new THREE.CylinderGeometry(0.2, 0.15, 0.08, 28).translate(0, -0.28, 0), ROBOT.grey),
+    part(new THREE.BoxGeometry(0.1, 0.12, 0.03).translate(-0.07, 0.0, 0.205), ROBOT.blue),
+    part(new THREE.BoxGeometry(0.06, 0.18, 0.03).translate(0.08, -0.03, 0.2), ROBOT.blue),
+    part(new THREE.BoxGeometry(0.16, 0.025, 0.03).translate(0, -0.15, 0.205), ROBOT.silver),
+    part(new THREE.BoxGeometry(0.1, 0.06, 0.12).translate(0, -0.34, 0), ROBOT.grey),
+  ]
+  for (const side of [-1, 1]) {
+    parts.push(
+      part(new THREE.CylinderGeometry(0.06, 0.06, 0.08, 16).rotateZ(Math.PI / 2).translate(side * 0.25, 0.06, 0), ROBOT.silver),
+      part(new THREE.BoxGeometry(0.07, 0.44, 0.12).translate(side * 0.29, -0.15, 0), ROBOT.white),
+      part(new THREE.BoxGeometry(0.075, 0.2, 0.04).translate(side * 0.29, -0.1, 0.05), ROBOT.blue),
+      part(new THREE.BoxGeometry(0.11, 0.07, 0.2).translate(side * 0.29, -0.39, 0.02), ROBOT.grey),
+    )
+  }
+  return mergeGeometries(parts)!
+}
+
+/** Robot kafası: gümüş kubbe, mavi paneller, göz ve kırmızı mercek. Merkez boyun noktası. */
+export function robotHead() {
+  const parts = [
+    part(new THREE.SphereGeometry(0.215, 28, 14, 0, Math.PI * 2, 0, Math.PI / 2), ROBOT.silver),
+    part(new THREE.CylinderGeometry(0.215, 0.215, 0.03, 28).translate(0, 0.0, 0), ROBOT.blue),
+    part(new THREE.BoxGeometry(0.09, 0.05, 0.03).rotateX(-0.5).translate(-0.08, 0.13, 0.15), ROBOT.blue),
+    part(new THREE.BoxGeometry(0.05, 0.05, 0.03).rotateX(-0.3).translate(0.1, 0.08, 0.18), ROBOT.blue),
+    part(new THREE.BoxGeometry(0.16, 0.035, 0.03).rotateX(-0.2).translate(0, 0.045, 0.2), ROBOT.blue),
+    part(new THREE.SphereGeometry(0.045, 16, 10).translate(0, 0.12, 0.17), ROBOT.black),
+    part(new THREE.SphereGeometry(0.025, 12, 8).translate(0.09, 0.15, 0.15), ROBOT.red),
+  ]
+  return mergeGeometries(parts)!
 }

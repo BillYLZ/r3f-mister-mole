@@ -20,7 +20,7 @@ Ana menüden üç görünüm arasında seçim yapılır; seçim tarayıcıda hat
 ![Mister Mole Sürüm 2](docs/mister-mole-v2.png)
 
 - **Sürüm 3 · Oyuncak tuğla** (`src/v3/`): aydınlık mor sahne ve canlı renkli, düğmeli plastik tuğlalar. Ayrıca:
-  - kayalar düğmeli gri toplar, elmaslar kristal mücevherler, çerçeve mor karolar;
+  - kayalar düğmeli gri toplar, çerçeve mor karolar; toplanacak elmaslar yerine kubbe başlı küçük robotlar var (kafaları sağa sola bakar);
   - sabit duvarlar uçları yuvarlak, delikli tek parça kirişler;
   - oyuncu 2,5 saniye durursa çıkış noktasından halka halka yayılan yumuşak bir dalga başlar: her tuğla bütün olarak Z ekseninde ileri geri gider, sabit duvarlar ve çerçeve yerinde kalır (hareket edince söner);
   - açılan çıkış beyaz oklu kırmızı bir karo;

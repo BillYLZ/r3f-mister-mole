@@ -12,7 +12,7 @@ import { clearInput, takeInput } from '../input.ts'
 import { sfx } from '../sfx.ts'
 import { Particles } from '../Particles.ts'
 import { DarkLord, type LordState } from './DarkLord.tsx'
-import { BEAM_COLORS, DIRT_COLORS, PALETTE, addWave, waveOf, arrowGeometry, beamGeometry, createWaveUniforms, dirtColorIndex, findBarRuns, jewel, moonTexture, roundBrick, studBrick, tile } from './bricks.ts'
+import { BEAM_COLORS, DIRT_COLORS, PALETTE, addWave, waveOf, arrowGeometry, beamGeometry, createWaveUniforms, dirtColorIndex, findBarRuns, moonTexture, robotBody, robotHead, roundBrick, studBrick, tile } from './bricks.ts'
 
 const TICK = 1 / TICKS_PER_SECOND
 const N = W * H
@@ -52,7 +52,7 @@ function wingGeometry(side: 1 | -1) {
   return new THREE.ExtrudeGeometry(s, { depth: 0.05, bevelEnabled: true, bevelSize: 0.02, bevelThickness: 0.02, bevelSegments: 2 })
 }
 
-type LayerKey = 'brick' | 'frame' | 'magic' | 'boulder' | 'jewel' | 'fly' | 'wingL' | 'wingR' | 'amoeba' | 'explode'
+type LayerKey = 'brick' | 'frame' | 'magic' | 'boulder' | 'robot' | 'robotHead' | 'fly' | 'wingL' | 'wingR' | 'amoeba' | 'explode'
 
 export function SceneV3() {
   const level = useGame((s) => s.level)
@@ -72,7 +72,8 @@ export function SceneV3() {
       brick: studBrick(),
       tile: tile(),
       round: roundBrick(),
-      jewel: jewel(),
+      robot: robotBody(),
+      robotHead: robotHead(),
       wingL: wingGeometry(-1),
       wingR: wingGeometry(1),
       arrow: arrowGeometry(),
@@ -98,19 +99,7 @@ export function SceneV3() {
       frame: plastic({ color: '#6158e0', roughness: 0.4, clearcoat: 0.4 }),
       magic: plastic({ color: '#b48cff', transparent: true, opacity: 0.75, emissive: '#7b3dff', emissiveIntensity: 0.15 }),
       boulder: plastic({ color: '#6d7380', roughness: 0.35 }),
-      jewel: new THREE.MeshPhysicalMaterial({
-        color: '#3fd0ff',
-        emissive: '#16a6ff',
-        emissiveIntensity: 0.12,
-        roughness: 0,
-        transparent: true,
-        opacity: 0.88,
-        clearcoat: 1,
-        iridescence: 0.6,
-        envMap: env,
-        envMapIntensity: 1.1,
-        flatShading: true,
-      }),
+      robot: plastic({ vertexColors: true }),
       fly: plastic({ color: '#ff8a1f', emissive: '#ff5a00', emissiveIntensity: 0.9 }),
       wingL: plastic({ color: PALETTE.pink, emissive: '#ff2f8a', emissiveIntensity: 0.25 }),
       wingR: plastic({ color: PALETTE.sky, emissive: '#1f7fff', emissiveIntensity: 0.25 }),
@@ -215,7 +204,9 @@ export function SceneV3() {
           break
         case 'collect':
           play('collect', sfx.collect)
-          particles.burst(wx(e.x), wy(e.y), 0.5, 26, [0.8, 2.6, 3.4], { speed: 4.5, life: 0.8, size: 0.06, gravity: -2 })
+          // robot toplanınca beyaz-mavi parçalar
+          particles.burst(wx(e.x), wy(e.y), 0.5, 14, [2.2, 2.3, 2.6], { speed: 4, life: 0.8, size: 0.07, gravity: -2 })
+          particles.burst(wx(e.x), wy(e.y), 0.5, 14, [0.4, 1.2, 3.4], { speed: 4, life: 0.8, size: 0.07, gravity: -2 })
           if (live) vibrate(10)
           break
         case 'land': {
@@ -307,7 +298,7 @@ export function SceneV3() {
 
     // --- Çizim ---
     const L = layers.current
-    const counts: Record<LayerKey, number> = { brick: 0, frame: 0, magic: 0, boulder: 0, jewel: 0, fly: 0, wingL: 0, wingR: 0, amoeba: 0, explode: 0 }
+    const counts: Record<LayerKey, number> = { brick: 0, frame: 0, magic: 0, boulder: 0, robot: 0, robotHead: 0, fly: 0, wingL: 0, wingR: 0, amoeba: 0, explode: 0 }
     const put = (k: LayerKey, col?: THREE.Color) => {
       const m = L[k]
       if (!m) return
@@ -382,11 +373,18 @@ export function SceneV3() {
           break
         }
         case T.DIAMOND: {
+          // Küçük robot: gövde hafifçe sallanır, kubbe kafa sağa sola bakar
           const [px, py] = lerpPos(c.id, i)
-          dummy.position.set(px, py + bounce(c.id), 0.2)
-          dummy.rotation.set(Math.sin(t * 1.6 + c.id) * 0.4, Math.cos(t * 1.3 + c.id) * 0.4, t * 0.8 + c.id)
-          dummy.scale.setScalar(1 + Math.max(0, Math.sin(t * 3 + c.id * 1.7)) ** 16 * 0.2)
-          put('jewel')
+          const by = py + bounce(c.id) + 0.04
+          const sway = Math.sin(t * 2.2 + c.id) * 0.12
+          dummy.position.set(px, by, 0.15)
+          dummy.rotation.set(0, Math.sin(t * 0.7 + c.id) * 0.25, sway)
+          put('robot')
+          dummy.rotation.order = 'ZYX'
+          dummy.position.set(px - Math.sin(sway) * 0.14, by + Math.cos(sway) * 0.14, 0.15)
+          dummy.rotation.set(0, Math.sin(t * 1.3 + c.id * 2.1) * 1.1, sway)
+          put('robotHead')
+          dummy.rotation.order = 'XYZ'
           break
         }
         case T.FIREFLY: {
@@ -570,7 +568,8 @@ export function SceneV3() {
       <instancedMesh ref={reg('frame')} args={[geo.tile, mat.frame, N]} castShadow receiveShadow frustumCulled={false} />
       <instancedMesh ref={reg('magic')} args={[geo.brick, mat.magic, N]} castShadow receiveShadow frustumCulled={false} />
       <instancedMesh ref={reg('boulder')} args={[geo.round, mat.boulder, N]} castShadow receiveShadow frustumCulled={false} />
-      <instancedMesh ref={reg('jewel')} args={[geo.jewel, mat.jewel, N]} castShadow frustumCulled={false} />
+      <instancedMesh ref={reg('robot')} args={[geo.robot, mat.robot, N]} castShadow frustumCulled={false} />
+      <instancedMesh ref={reg('robotHead')} args={[geo.robotHead, mat.robot, N]} castShadow frustumCulled={false} />
       <instancedMesh ref={reg('fly')} args={[geo.round, mat.fly, 64]} castShadow frustumCulled={false} />
       <instancedMesh ref={reg('wingL')} args={[geo.wingL, mat.wingL, 64]} castShadow frustumCulled={false} />
       <instancedMesh ref={reg('wingR')} args={[geo.wingR, mat.wingR, 64]} castShadow frustumCulled={false} />
