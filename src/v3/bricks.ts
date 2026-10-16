@@ -232,8 +232,8 @@ export function createWaveUniforms(): WaveUniforms {
 /**
  * Malzemeye Z ekseninde dairesel dalga ekler: merkezden (çıkış) halka halka
  * yayılır, uzaklaştıkça hafifçe söner, oyuncunun çevresinde sakin kalır.
- * Hesap köşe gölgelendiricisinde dünya koordinatlarında yapılır; bu sayede
- * örneklenmiş (instanced) tuğlalar da tek parça kirişler de aynı dalgaya uyar.
+ * Her parça kendi merkezindeki dalga yüksekliği kadar bütün olarak ileri
+ * geri gider (eğilmez, kıvrılmaz).
  */
 export function addWave(mat: THREE.Material, u: WaveUniforms) {
   // Gölgelendiricinin okuduğu değerler malzemede tutulur; güncelleyen kod da
@@ -254,15 +254,20 @@ varying float vWaveH;`,
       .replace(
         '#include <project_vertex>',
         `vec4 waveWorld = vec4( transformed, 1.0 );
+// Parçanın merkezi: her tuğla şeklini bozmadan bütün olarak hareket eder
+vec4 waveCenter = vec4( 0.0, 0.0, 0.0, 1.0 );
 #ifdef USE_BATCHING
 	waveWorld = batchingMatrix * waveWorld;
+	waveCenter = batchingMatrix * waveCenter;
 #endif
 #ifdef USE_INSTANCING
 	waveWorld = instanceMatrix * waveWorld;
+	waveCenter = instanceMatrix * waveCenter;
 #endif
 waveWorld = modelMatrix * waveWorld;
-float waveD = distance( waveWorld.xy, uWaveCenter );
-float waveCalm = smoothstep( 1.2, 3.2, distance( waveWorld.xy, uWavePlayer ) );
+waveCenter = modelMatrix * waveCenter;
+float waveD = distance( waveCenter.xy, uWaveCenter );
+float waveCalm = smoothstep( 1.2, 3.2, distance( waveCenter.xy, uWavePlayer ) );
 float waveH = uWaveAmp * waveCalm * sin( waveD * 1.25 - uWaveTime * 3.0 ) / ( 1.0 + waveD * 0.035 );
 waveWorld.z += waveH;
 vWaveH = waveH / 0.4;

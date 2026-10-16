@@ -126,7 +126,9 @@ export function SceneV3() {
   // Oyuncu durunca çıkıştan yayılan dalga: tüm tuğla malzemelerine eklenir
   useMemo(() => {
     const u = createWaveUniforms()
-    for (const m of Object.values(mat)) addWave(m, u)
+    // Sabit parçalar (kirişler, çerçeve, giriş ve çıkış) dalgaya katılmaz
+    const still = new Set<THREE.Material>([mat.wall, mat.frame, mat.exit, mat.arrow, mat.inbox])
+    for (const m of Object.values(mat)) if (!still.has(m)) addWave(m, u)
   }, [mat])
 
   const layers = useRef<Partial<Record<LayerKey, THREE.InstancedMesh>>>({})
