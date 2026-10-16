@@ -12,7 +12,7 @@ import { clearInput, takeInput } from '../input.ts'
 import { sfx } from '../sfx.ts'
 import { Particles } from '../Particles.ts'
 import { DarkLord, type LordState } from './DarkLord.tsx'
-import { BEAM_COLORS, DIRT_COLORS, PALETTE, addWave, arrowGeometry, beamGeometry, createWaveUniforms, dirtColorIndex, findBarRuns, jewel, moonTexture, roundBrick, studBrick, tile } from './bricks.ts'
+import { BEAM_COLORS, DIRT_COLORS, PALETTE, addWave, waveOf, arrowGeometry, beamGeometry, createWaveUniforms, dirtColorIndex, findBarRuns, jewel, moonTexture, roundBrick, studBrick, tile } from './bricks.ts'
 
 const TICK = 1 / TICKS_PER_SECOND
 const N = W * H
@@ -20,7 +20,7 @@ const wx = (x: number) => x - (W - 1) / 2
 const wy = (y: number) => (H - 1) / 2 - y
 const NONE: Input = { dir: -1, snap: false }
 const IDLE_BEFORE_WAVE = 2.5 // saniye
-const WAVE_AMP = 0.32
+const WAVE_AMP = 0.42
 const DIRT_RGB = DIRT_COLORS.map((c) => new THREE.Color(c))
 const BEAM_RGB = BEAM_COLORS.map((c) => new THREE.Color(c))
 const rgb = (c: THREE.Color): [number, number, number] => [c.r, c.g, c.b]
@@ -124,10 +124,9 @@ export function SceneV3() {
   )
 
   // Oyuncu durunca çıkıştan yayılan dalga: tüm tuğla malzemelerine eklenir
-  const wave = useMemo(() => {
+  useMemo(() => {
     const u = createWaveUniforms()
     for (const m of Object.values(mat)) addWave(m, u)
-    return u
   }, [mat])
 
   const layers = useRef<Partial<Record<LayerKey, THREE.InstancedMesh>>>({})
@@ -467,6 +466,7 @@ export function SceneV3() {
     s.waveAmp = THREE.MathUtils.damp(s.waveAmp, waveOn ? WAVE_AMP : 0, waveOn ? 1.6 : 5, dt)
     if (s.waveAmp > 0.001) s.waveTime += dt
     else s.waveTime = 0
+    const wave = waveOf(mat.brick)
     wave.uWaveAmp.value = s.waveAmp
     wave.uWaveTime.value = s.waveTime
     if (exitAt >= 0) wave.uWaveCenter.value.set(wx(exitAt % W), wy(Math.floor(exitAt / W)))

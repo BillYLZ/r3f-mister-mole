@@ -215,6 +215,11 @@ export interface WaveUniforms {
   uWavePlayer: { value: THREE.Vector2 }
 }
 
+/** Malzemeye bağlı dalga değerleri (addWave ile eklenmiş olmalı). */
+export function waveOf(mat: THREE.Material): WaveUniforms {
+  return mat.userData.wave as WaveUniforms
+}
+
 export function createWaveUniforms(): WaveUniforms {
   return {
     uWaveAmp: { value: 0 },
@@ -231,6 +236,9 @@ export function createWaveUniforms(): WaveUniforms {
  * örneklenmiş (instanced) tuğlalar da tek parça kirişler de aynı dalgaya uyar.
  */
 export function addWave(mat: THREE.Material, u: WaveUniforms) {
+  // Gölgelendiricinin okuduğu değerler malzemede tutulur; güncelleyen kod da
+  // buradan okur (React'in geliştirme modunda iki kez oluşturmasına karşı)
+  mat.userData.wave = u
   mat.onBeforeCompile = (shader) => {
     Object.assign(shader.uniforms, u)
     shader.vertexShader = shader.vertexShader
@@ -240,7 +248,8 @@ export function addWave(mat: THREE.Material, u: WaveUniforms) {
 uniform float uWaveAmp;
 uniform float uWaveTime;
 uniform vec2 uWaveCenter;
-uniform vec2 uWavePlayer;`,
+uniform vec2 uWavePlayer;
+varying float vWaveH;`,
       )
       .replace(
         '#include <project_vertex>',
@@ -254,9 +263,21 @@ uniform vec2 uWavePlayer;`,
 waveWorld = modelMatrix * waveWorld;
 float waveD = distance( waveWorld.xy, uWaveCenter );
 float waveCalm = smoothstep( 1.2, 3.2, distance( waveWorld.xy, uWavePlayer ) );
-waveWorld.z += uWaveAmp * waveCalm * sin( waveD * 0.9 - uWaveTime * 2.6 ) / ( 1.0 + waveD * 0.035 );
+float waveH = uWaveAmp * waveCalm * sin( waveD * 1.25 - uWaveTime * 3.0 ) / ( 1.0 + waveD * 0.035 );
+waveWorld.z += waveH;
+vWaveH = waveH / 0.4;
 vec4 mvPosition = viewMatrix * waveWorld;
 gl_Position = projectionMatrix * mvPosition;`,
+      )
+    // Karşıdan bakınca da görünsün: dalga tepeleri parlar, çukurlar hafif koyulaşır
+    shader.fragmentShader = shader.fragmentShader
+      .replace('#include <common>', `#include <common>
+varying float vWaveH;`)
+      .replace(
+        '#include <emissivemap_fragment>',
+        `#include <emissivemap_fragment>
+totalEmissiveRadiance += diffuseColor.rgb * max( vWaveH, 0.0 ) * 1.1;
+diffuseColor.rgb *= 1.0 + min( vWaveH, 0.0 ) * 0.45;`,
       )
   }
   mat.customProgramCacheKey = () => 'wave-v3'

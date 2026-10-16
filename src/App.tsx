@@ -153,6 +153,7 @@ function HudBar() {
       <div className="bd-lives">{'♥'.repeat(Math.max(0, lives))}<span className="bd-dim">{'♥'.repeat(Math.max(0, LIVES - lives))}</span></div>
       <div className="bd-buttons">
         <button onClick={() => toggle('paused')} title="Duraklat (P)">{paused ? '▶' : '⏸'}</button>
+        <button onClick={restartCave} title="Mağarayı baştan al, bir can gider (Esc)">↺</button>
         <button onClick={() => toggle('overview')} title="Genel görünüm (V)">⛶</button>
         <button onClick={() => toggle('muted')} title="Ses (M)">{muted ? '🔇' : '🔊'}</button>
       </div>
@@ -269,7 +270,7 @@ function Controls() {
         <li>
           <b>YERİNDE KAZ</b> basılıyken yön: yerinden kıpırdamadan kaz / al
         </li>
-        <li>Sıkıştıysan ⏸ duraklat → ↺ Baştan al</li>
+        <li>Sıkıştıysan üstteki ↺ düğmesi mağarayı baştan alır (bir can gider)</li>
       </ul>
     )
   return (

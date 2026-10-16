@@ -41,7 +41,7 @@ Ana menüden üç görünüm arasında seçim yapılır; seçim tarayıcıda hat
 | --- | --- |
 | Ok tuşları / WASD | Hareket |
 | Shift + yön | Yerinden kıpırdamadan kaz veya al |
-| Esc | Sıkışınca mağarayı baştan al (bir can gider). Telefonda: ⏸ → ↺ Baştan al |
+| Esc | Sıkışınca mağarayı baştan al (bir can gider). Telefonda üstteki ↺ düğmesi |
 | P | Duraklat |
 | V | Genel görünüm |
 | M | Ses aç/kapat |
