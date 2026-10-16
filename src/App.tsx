@@ -1,14 +1,20 @@
 import { useEffect, type PointerEvent as RPointerEvent } from 'react'
 import { Canvas } from '@react-three/fiber'
-import { EffectComposer, Bloom, Vignette } from '@react-three/postprocessing'
+import { EffectComposer, Bloom, Vignette, Noise, ChromaticAberration } from '@react-three/postprocessing'
+import { BlendFunction } from 'postprocessing'
+import { Vector2 } from 'three'
 import { Scene } from './Scene.tsx'
+import { SceneV2 } from './v2/SceneV2.tsx'
 import { useGame, LIVES } from './store.ts'
 import { CAVES } from './levels.ts'
 import { keyDir, press, release, setSnap, clearInput } from './input.ts'
 import { setMuted, unlockAudio } from './sfx.ts'
 
+const CA_OFFSET = new Vector2(0.0008, 0.0008)
+
 export default function App() {
   const muted = useGame((s) => s.muted)
+  const version = useGame((s) => s.version)
   useEffect(() => setMuted(muted), [muted])
 
   useEffect(() => {
@@ -61,13 +67,26 @@ export default function App() {
 
   return (
     <div className="bd-root">
-      <Canvas shadows="percentage" dpr={[1, 2]} camera={{ fov: 45, near: 0.5, far: 200, position: [0, 0, 30] }} gl={{ antialias: true }}>
-        <Scene />
-        <EffectComposer multisampling={4}>
-          <Bloom luminanceThreshold={0.9} luminanceSmoothing={0.2} intensity={0.9} mipmapBlur />
-          <Vignette offset={0.3} darkness={0.7} />
-        </EffectComposer>
-      </Canvas>
+      {version === 1 ? (
+        <Canvas key="v1" shadows="percentage" dpr={[1, 2]} camera={{ fov: 45, near: 0.5, far: 200, position: [0, 0, 30] }} gl={{ antialias: true }}>
+          <Scene />
+          <EffectComposer multisampling={4}>
+            <Bloom luminanceThreshold={0.9} luminanceSmoothing={0.2} intensity={0.9} mipmapBlur />
+            <Vignette offset={0.3} darkness={0.7} />
+          </EffectComposer>
+        </Canvas>
+      ) : (
+        <Canvas key="v2" shadows="soft" dpr={[1, 2]} camera={{ fov: 42, near: 0.5, far: 200, position: [0, 0, 30] }} gl={{ antialias: true }}>
+          <SceneV2 />
+          <EffectComposer multisampling={4}>
+            <Bloom luminanceThreshold={0.55} luminanceSmoothing={0.3} intensity={1.5} radius={0.75} mipmapBlur />
+            <ChromaticAberration offset={CA_OFFSET} radialModulation modulationOffset={0.35} />
+            <Noise premultiply blendFunction={BlendFunction.ADD} opacity={0.35} />
+            <Vignette offset={0.22} darkness={0.92} />
+          </EffectComposer>
+        </Canvas>
+      )}
+      {version === 2 && <DangerEdge />}
       <HudBar />
       <Overlay />
       <TouchPad />
@@ -107,14 +126,15 @@ function HudBar() {
   const muted = useGame((s) => s.muted)
   const paused = useGame((s) => s.paused)
   const toggle = useGame((s) => s.toggle)
+  const version = useGame((s) => s.version)
   if (screen === 'title') return null
   return (
-    <div className="bd-hud">
+    <div className={version === 2 ? 'bd-hud v2' : 'bd-hud'}>
       <div className="bd-cave">
         <span className="bd-dim">Mağara {level + 1}</span> {CAVES[level].name}
       </div>
       <div className={`bd-gems ${hud.exitOpen ? 'open' : ''}`}>
-        <span className="bd-gem">◆</span>
+        {version === 2 ? <GemRing value={hud.diamonds} max={hud.needed} open={hud.exitOpen} /> : <span className="bd-gem">◆</span>}
         <b>{hud.diamonds}</b>/{hud.needed}
         <span className="bd-dim"> ×{hud.value}</span>
       </div>
@@ -155,6 +175,7 @@ function Overlay() {
               MISTER <span>MOLE</span>
             </h1>
             <p className="bd-sub">Klasik bir maden oyununa modern bir 3B yorum</p>
+            <VersionPicker />
             {cont('Oyna')}
             <div className="bd-levels">
               {CAVES.map((c, i) => (
@@ -261,4 +282,43 @@ function TouchPad() {
       </button>
     </div>
   )
+}
+
+function VersionPicker() {
+  const version = useGame((s) => s.version)
+  const setVersion = useGame((s) => s.setVersion)
+  return (
+    <div className="bd-version" role="radiogroup" aria-label="Sürüm">
+      <button role="radio" aria-checked={version === 1} className={version === 1 ? 'on' : ''} onClick={() => setVersion(1)}>
+        <b>Sürüm 1</b>
+        <span>Klasik</span>
+      </button>
+      <button role="radio" aria-checked={version === 2} className={version === 2 ? 'on' : ''} onClick={() => setVersion(2)}>
+        <b>Sürüm 2</b>
+        <span>Modern · karanlık mağara</span>
+      </button>
+    </div>
+  )
+}
+
+/** Sürüm 2: toplanan elmas oranını gösteren halka. */
+function GemRing({ value, max, open }: { value: number; max: number; open: boolean }) {
+  const r = 11
+  const c = 2 * Math.PI * r
+  const k = max > 0 ? Math.min(1, value / max) : 1
+  return (
+    <svg className={`bd-ring ${open ? 'open' : ''}`} viewBox="0 0 28 28" width="28" height="28" aria-hidden="true">
+      <circle cx="14" cy="14" r={r} className="track" />
+      <circle cx="14" cy="14" r={r} className="fill" strokeDasharray={c} strokeDashoffset={c * (1 - k)} />
+      <path d="M14 8 L18 12 L14 20 L10 12 Z" className="gem" />
+    </svg>
+  )
+}
+
+/** Sürüm 2: süre azalınca ekran kenarları kırmızı nabız atar. */
+function DangerEdge() {
+  const screen = useGame((s) => s.screen)
+  const time = useGame((s) => s.hud.time)
+  const on = screen === 'playing' && time > 0 && time <= 10
+  return <div className={`bd-danger ${on ? 'on' : ''}`} />
 }

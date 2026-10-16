@@ -3,6 +3,8 @@ import { CAVES } from './levels.ts'
 
 export type Screen = 'title' | 'playing' | 'dead' | 'timeout' | 'won' | 'gameover' | 'complete'
 
+export type Version = 1 | 2
+
 export interface Hud {
   diamonds: number
   needed: number
@@ -22,6 +24,7 @@ interface State {
   paused: boolean
   muted: boolean
   overview: boolean
+  version: Version // 1: klasik görünüm, 2: modern görünüm
   hud: Hud
   setHud: (h: Hud) => void
   start: (level: number) => void
@@ -30,6 +33,15 @@ interface State {
   finish: (result: 'dead' | 'timeout' | 'won', caveScore: number) => void
   toTitle: () => void
   toggle: (k: 'paused' | 'muted' | 'overview') => void
+  setVersion: (v: Version) => void
+}
+
+const readVersion = (): Version => {
+  try {
+    return localStorage.getItem('mister-mole-version') === '2' ? 2 : 1
+  } catch {
+    return 1
+  }
 }
 
 const readBest = () => {
@@ -52,6 +64,7 @@ export const useGame = create<State>((set, get) => ({
   paused: false,
   muted: false,
   overview: false,
+  version: readVersion(),
   hud: { diamonds: 0, needed: 0, value: 0, time: 0, score: 0, exitOpen: false },
   setHud: (hud) => set({ hud }),
   start: (level) => set((s) => ({ screen: 'playing', level, lives: LIVES, totalScore: 0, gameKey: s.gameKey + 1, paused: false })),
@@ -72,6 +85,14 @@ export const useGame = create<State>((set, get) => ({
   },
   toTitle: () => set({ screen: 'title', paused: false }),
   toggle: (k) => set((s) => ({ [k]: !s[k] }) as Partial<State>),
+  setVersion: (version) => {
+    try {
+      localStorage.setItem('mister-mole-version', String(version))
+    } catch {
+      // depolama kapalıysa seçim yalnızca bu oturumda geçerli
+    }
+    set({ version })
+  },
 }))
 
 function saveBest(score: number) {

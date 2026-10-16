@@ -6,6 +6,19 @@
 
 ![Mister Mole](docs/mister-mole.png)
 
+## Sürümler
+
+Ana menüden iki görünüm arasında seçim yapılır; seçim tarayıcıda hatırlanır. Oyun kuralları ve mağaralar iki sürümde de aynıdır.
+
+- **Sürüm 1 · Klasik:** aydınlık mağara, blok toprak, madenci karakter.
+- **Sürüm 2 · Modern** (`src/v2/`): karanlık mağara. Işığı köstebeğin gölge düşüren kafa lambası, elmaslar, ateşböcekleri ve patlamalar verir. Ayrıca:
+  - birbirine kaynayan organik toprak, bazalt sütunlar, pırlanta kesimli yanardöner elmaslar;
+  - havada süzülen toz zerreleri, patlamada şok dalgası ve kısa ağır çekim;
+  - düşen nesnelerde esneme-sıkışma, ileriye bakan kamera, telefonda titreşim;
+  - elmas ilerleme halkası ve süre azalınca kırmızı nabız atan ekran kenarları.
+
+![Mister Mole Sürüm 2](docs/mister-mole-v2.png)
+
 ## Özellikler
 
 - **Motor** (`src/engine.ts`): render'dan bağımsız, deterministik TypeScript. Klasik maden oyunlarındaki gibi ızgara her tick'te yukarıdan aşağıya, soldan sağa taranır. Taşlar ve elmaslar düşer, yuvarlak nesnelerin üstünden yuvarlanır. Ateşböcekleri sol duvarı, kelebekler sağ duvarı takip eder. Ayrıca amip, sihirli duvar, 3×3 patlamalar, taş itme ve "yerinde kazma" vardır.
