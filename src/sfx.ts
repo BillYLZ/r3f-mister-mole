@@ -65,74 +65,90 @@ function noise(dur: number, freq: number, peak = 0.3, q = 1, sweepTo?: number) {
   s.stop(t + dur + 0.05)
 }
 
+/** Yumuşak bozulma eğrisi: uğultuya sıcak bir vızıltı katar. */
+let saberCurve: Float32Array | null = null
+function softClip() {
+  if (!saberCurve) {
+    saberCurve = new Float32Array(1024)
+    for (let i = 0; i < 1024; i++) {
+      const x = (i / 1023) * 2 - 1
+      saberCurve[i] = Math.tanh(x * 2.2)
+    }
+  }
+  return saberCurve
+}
+
 /**
- * Lazer kılıç savurma sesi (sıfırdan sentez): iki hafif farklı testere dişi
- * dalgadan alçak uğultu, savrulurken yükselip alçalan filtre ("vuuummm"),
- * süpürülen gürültüden vınlama ve vuruş anında kısa bir cızırtı.
+ * Lazer kılıç savurma sesi (sıfırdan sentez, kayıt kullanılmaz).
+ * Alçak sinüs uğultu (temel + armonikler) yumuşak bozulmadan geçer; savrulurken
+ * perde bir an yükselip düşer (Doppler etkisi) ve ses kabarır; altta hafif bir
+ * hava hışırtısı. Tiz cızırtı yoktur.
  */
 function saberSwing() {
   if (!ctx || !master || !noiseBuf || muted) return
-  const t = ctx.currentTime
+  saberGraph(ctx, master, noiseBuf, ctx.currentTime)
+}
+
+/** Kılıç sesini verilen ses bağlamında kurar (dosyaya kaydetmek için de kullanılır). */
+export function saberGraph(ctx: BaseAudioContext, master: AudioNode, noiseBuf: AudioBuffer, t: number) {
+  const dur = 0.62
   const out = ctx.createGain()
-  out.gain.setValueAtTime(0.0001, t)
-  out.gain.exponentialRampToValueAtTime(0.5, t + 0.04)
-  out.gain.exponentialRampToValueAtTime(0.25, t + 0.3)
-  out.gain.exponentialRampToValueAtTime(0.0001, t + 0.75)
-  out.connect(master)
+  out.gain.setValueAtTime(0, t)
+  out.gain.linearRampToValueAtTime(0.42, t + 0.05)
+  out.gain.linearRampToValueAtTime(0.55, t + 0.16) // savruluşun doruğu
+  out.gain.linearRampToValueAtTime(0.18, t + 0.38)
+  out.gain.linearRampToValueAtTime(0, t + dur)
   const lp = ctx.createBiquadFilter()
   lp.type = 'lowpass'
-  lp.Q.value = 7
-  lp.frequency.setValueAtTime(350, t)
-  lp.frequency.exponentialRampToValueAtTime(2600, t + 0.13)
-  lp.frequency.exponentialRampToValueAtTime(450, t + 0.6)
-  lp.connect(out)
-  for (const f of [90, 95.5, 181]) {
+  lp.Q.value = 0.7
+  lp.frequency.setValueAtTime(700, t)
+  lp.frequency.linearRampToValueAtTime(1500, t + 0.16)
+  lp.frequency.linearRampToValueAtTime(800, t + dur)
+  out.connect(lp).connect(master)
+
+  // Uğultu: temel 92 Hz ve armonikleri, birlikte perde süpürmesi
+  const hum = ctx.createGain()
+  hum.gain.value = 0.5
+  const shaper = ctx.createWaveShaper()
+  shaper.curve = softClip() as Float32Array<ArrayBuffer>
+  hum.connect(shaper).connect(out)
+  const base = 92
+  for (const [mult, amp, type] of [
+    [1, 1, 'sine'],
+    [2, 0.45, 'sine'],
+    [3, 0.2, 'triangle'],
+    [1.007, 0.6, 'sine'], // hafif zonklama için çok az kaydırılmış ikinci ses
+  ] as const) {
     const o = ctx.createOscillator()
-    o.type = 'sawtooth'
+    o.type = type
+    const f = base * mult
     o.frequency.setValueAtTime(f, t)
-    o.frequency.exponentialRampToValueAtTime(f * 1.55, t + 0.13) // Doppler benzeri yükseliş
-    o.frequency.exponentialRampToValueAtTime(f * 0.92, t + 0.6)
+    o.frequency.linearRampToValueAtTime(f * 1.35, t + 0.15) // yaklaşırken perde yükselir
+    o.frequency.linearRampToValueAtTime(f * 0.88, t + 0.4) // uzaklaşırken düşer
+    o.frequency.linearRampToValueAtTime(f * 0.95, t + dur)
     const g = ctx.createGain()
-    g.gain.value = f > 150 ? 0.25 : 0.5
-    // hafif titreşim (vibrato) uğultuyu canlı kılar
-    const lfo = ctx.createOscillator()
-    const lfoGain = ctx.createGain()
-    lfo.frequency.value = 7
-    lfoGain.gain.value = f * 0.02
-    lfo.connect(lfoGain).connect(o.frequency)
-    o.connect(g).connect(lp)
+    g.gain.value = amp
+    o.connect(g).connect(hum)
     o.start(t)
-    lfo.start(t)
-    o.stop(t + 0.8)
-    lfo.stop(t + 0.8)
+    o.stop(t + dur + 0.05)
   }
-  // vınlama: bant geçiren gürültü süpürmesi
+
+  // Hava hışırtısı: yumuşak, alçak bant gürültü
   const n = ctx.createBufferSource()
   n.buffer = noiseBuf
   const bp = ctx.createBiquadFilter()
   bp.type = 'bandpass'
-  bp.Q.value = 2.5
-  bp.frequency.setValueAtTime(400, t)
-  bp.frequency.exponentialRampToValueAtTime(2200, t + 0.12)
-  bp.frequency.exponentialRampToValueAtTime(500, t + 0.5)
+  bp.Q.value = 0.8
+  bp.frequency.setValueAtTime(350, t)
+  bp.frequency.linearRampToValueAtTime(900, t + 0.16)
+  bp.frequency.linearRampToValueAtTime(400, t + dur)
   const ng = ctx.createGain()
-  ng.gain.value = 0.35
+  ng.gain.setValueAtTime(0, t)
+  ng.gain.linearRampToValueAtTime(0.12, t + 0.15)
+  ng.gain.linearRampToValueAtTime(0, t + dur)
   n.connect(bp).connect(ng).connect(out)
   n.start(t, Math.random() * 0.5)
-  n.stop(t + 0.75)
-  // vuruş cızırtısı
-  const c = ctx.createBufferSource()
-  c.buffer = noiseBuf
-  const hp = ctx.createBiquadFilter()
-  hp.type = 'highpass'
-  hp.frequency.value = 2500
-  const cg = ctx.createGain()
-  cg.gain.setValueAtTime(0.0001, t + 0.1)
-  cg.gain.exponentialRampToValueAtTime(0.35, t + 0.12)
-  cg.gain.exponentialRampToValueAtTime(0.0001, t + 0.26)
-  c.connect(hp).connect(cg).connect(master)
-  c.start(t + 0.1, Math.random() * 0.5)
-  c.stop(t + 0.3)
+  n.stop(t + dur + 0.05)
 }
 
 export const sfx = {
