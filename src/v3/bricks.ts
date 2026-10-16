@@ -122,3 +122,77 @@ export function arrowGeometry() {
   s.closePath()
   return new THREE.ExtrudeGeometry(s, { depth: 0.04, bevelEnabled: true, bevelSize: 0.03, bevelThickness: 0.02, bevelSegments: 2 })
 }
+
+export interface BarRun {
+  x: number // ilk hücre (ızgara)
+  y: number
+  len: number
+  vertical: boolean
+}
+
+/**
+ * Bitişik duvar hücrelerini tek parça çubuklara ayırır: önce yatay diziler
+ * (en az 2 hücre), kalan tek hücreler dikey diziler olarak birleştirilir.
+ */
+export function findBarRuns(isWall: (x: number, y: number) => boolean, w: number, h: number): BarRun[] {
+  const used = new Uint8Array(w * h)
+  const runs: BarRun[] = []
+  for (let y = 0; y < h; y++)
+    for (let x = 0; x < w; x++) {
+      if (!isWall(x, y) || used[y * w + x]) continue
+      let len = 1
+      while (x + len < w && isWall(x + len, y)) len++
+      if (len >= 2) {
+        for (let k = 0; k < len; k++) used[y * w + x + k] = 1
+        runs.push({ x, y, len, vertical: false })
+      }
+    }
+  for (let x = 0; x < w; x++)
+    for (let y = 0; y < h; y++) {
+      if (!isWall(x, y) || used[y * w + x]) continue
+      let len = 1
+      while (y + len < h && isWall(x, y + len) && !used[(y + len) * w + x]) len++
+      for (let k = 0; k < len; k++) used[(y + k) * w + x] = 1
+      runs.push({ x, y, len, vertical: true })
+    }
+  return runs
+}
+
+function nonIndexed(g: THREE.BufferGeometry) {
+  return g.index ? g.toNonIndexed() : g
+}
+
+function paint(g: THREE.BufferGeometry, c: THREE.Color) {
+  const n = g.attributes.position.count
+  const col = new Float32Array(n * 3)
+  for (let i = 0; i < n; i++) col.set([c.r, c.g, c.b], i * 3)
+  g.setAttribute('color', new THREE.BufferAttribute(col, 3))
+  g.deleteAttribute('uv')
+  return g
+}
+
+/**
+ * Tüm duvar çubuklarını tek geometride birleştirir (köşeleri esnemeyen gerçek
+ * uzun tuğlalar, her hücrede 2x2 düğme). Renk köşe renkleriyle verilir.
+ * `toWorld` hücre koordinatını sahne koordinatına çevirir.
+ */
+export function barGeometry(runs: BarRun[], toWorld: (x: number, y: number) => [number, number], colorOf: (r: BarRun) => THREE.Color, depth = 0.7) {
+  const parts: THREE.BufferGeometry[] = []
+  for (const r of runs) {
+    const c = colorOf(r)
+    const [x0, y0] = toWorld(r.x, r.y)
+    const [x1, y1] = toWorld(r.vertical ? r.x : r.x + r.len - 1, r.vertical ? r.y + r.len - 1 : r.y)
+    const bw = r.vertical ? 0.96 : r.len - 0.04
+    const bh = r.vertical ? r.len - 0.04 : 0.96
+    parts.push(paint(nonIndexed(new RoundedBoxGeometry(bw, bh, depth, 3, 0.07)).translate((x0 + x1) / 2, (y0 + y1) / 2, 0), c))
+    for (let k = 0; k < r.len; k++) {
+      const [cx, cy] = toWorld(r.vertical ? r.x : r.x + k, r.vertical ? r.y + k : r.y)
+      for (const [sx, sy] of [[-0.24, -0.24], [0.24, -0.24], [-0.24, 0.24], [0.24, 0.24]]) {
+        const s = new THREE.CylinderGeometry(0.15, 0.15, 0.1, 16, 1).rotateX(Math.PI / 2).translate(cx + sx, cy + sy, depth / 2 + 0.05)
+        parts.push(paint(nonIndexed(s), c))
+      }
+    }
+  }
+  if (!parts.length) return new THREE.BufferGeometry()
+  return mergeGeometries(parts)!
+}

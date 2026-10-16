@@ -27,6 +27,10 @@ body,
   position: relative;
   width: 100%;
   height: 100%;
+  /* dokunmatikte uzun basınca yazı seçme / kopyala menüsü açılmasın */
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
 }
 .bd-dim {
   color: var(--dim);

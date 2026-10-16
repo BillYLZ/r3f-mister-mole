@@ -1,6 +1,7 @@
 // Oyun motoru için davranış testleri: node --experimental-strip-types scripts/check-game.ts
 import { T, createGame, step, tilesFromRows, at, countTiles, type CaveSettings, type Game, type Input } from '../src/engine.ts'
 import { CAVES, W, H, buildCave } from '../src/levels.ts'
+import { findBarRuns } from '../src/v3/bricks.ts'
 
 let failed = 0
 function check(name: string, ok: boolean, info = '') {
@@ -149,6 +150,31 @@ const run = (g: Game, n: number, input = NONE) => {
   const g = game(['WWWW', 'WP.W', 'WWWW'], { ...settings, time: 2 })
   run(g, 60)
   check('süre dolunca oyun biter', g.status === 'timeout')
+}
+
+// Sürüm 3: duvar hücreleri tek parça çubuklara bölünür, her hücre tam bir kez
+{
+  const rows = ['wwww.', 'w....', 'w..w.', '...w.']
+  const isWall = (x: number, y: number) => rows[y][x] === 'w'
+  const runs = findBarRuns(isWall, 5, 4)
+  const cover = new Map<string, number>()
+  for (const r of runs)
+    for (let k = 0; k < r.len; k++) {
+      const key = r.vertical ? `${r.x},${r.y + k}` : `${r.x + k},${r.y}`
+      cover.set(key, (cover.get(key) ?? 0) + 1)
+    }
+  const walls = rows.join('').split('').filter((c) => c === 'w').length
+  const once = [...cover.values()].every((n) => n === 1) && cover.size === walls
+  const shape = runs.map((r) => `${r.vertical ? 'd' : 'y'}${r.len}`).sort().join(' ')
+  check('duvar çubukları: her hücre tam bir kez', once, shape)
+  check('duvar çubukları: yatay 4 + dikey 2 + dikey 2', shape === 'd2 d2 y4')
+  for (const cave of CAVES) {
+    const tiles = buildCave(cave)
+    const r = findBarRuns((x, y) => tiles[y * W + x] === T.WALL, W, H)
+    const n = r.reduce((a, b) => a + b.len, 0)
+    const total = tiles.filter((t) => t === T.WALL).length
+    if (n !== total) check(`  "${cave.name}" duvarları çubuklara eksiksiz bölünür`, false, `${n}/${total}`)
+  }
 }
 
 // Seviyeler: boyut, kenarlar, giriş/çıkış, yeterli elmas potansiyeli, rastgele oyunla çökme yok

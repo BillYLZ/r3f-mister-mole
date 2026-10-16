@@ -12,7 +12,7 @@ import { clearInput, takeInput } from '../input.ts'
 import { sfx } from '../sfx.ts'
 import { Particles } from '../Particles.ts'
 import { DarkLord, type LordState } from './DarkLord.tsx'
-import { DIRT_COLORS, PALETTE, arrowGeometry, dirtColorIndex, jewel, moonTexture, roundBrick, studBrick, tile } from './bricks.ts'
+import { DIRT_COLORS, PALETTE, arrowGeometry, barGeometry, dirtColorIndex, findBarRuns, jewel, moonTexture, roundBrick, studBrick, tile } from './bricks.ts'
 
 const TICK = 1 / TICKS_PER_SECOND
 const N = W * H
@@ -49,7 +49,7 @@ function wingGeometry(side: 1 | -1) {
   return new THREE.ExtrudeGeometry(s, { depth: 0.05, bevelEnabled: true, bevelSize: 0.02, bevelThickness: 0.02, bevelSegments: 2 })
 }
 
-type LayerKey = 'brick' | 'wall' | 'frame' | 'magic' | 'boulder' | 'jewel' | 'fly' | 'wingL' | 'wingR' | 'amoeba' | 'explode'
+type LayerKey = 'brick' | 'frame' | 'magic' | 'boulder' | 'jewel' | 'fly' | 'wingL' | 'wingR' | 'amoeba' | 'explode'
 
 export function SceneV3() {
   const level = useGame((s) => s.level)
@@ -81,21 +81,21 @@ export function SceneV3() {
   const mat = useMemo(
     () => ({
       brick: plastic(),
-      wall: plastic({ color: '#f3f1ff' }),
+      wall: plastic({ vertexColors: true }),
       frame: plastic({ color: '#6158e0', roughness: 0.4, clearcoat: 0.4 }),
       magic: plastic({ color: '#b48cff', transparent: true, opacity: 0.75, emissive: '#7b3dff', emissiveIntensity: 0.15 }),
       boulder: plastic({ color: '#6d7380', roughness: 0.35 }),
       jewel: new THREE.MeshPhysicalMaterial({
-        color: '#8ff0ff',
+        color: '#3fd0ff',
         emissive: '#16a6ff',
-        emissiveIntensity: 0.35,
+        emissiveIntensity: 0.12,
         roughness: 0,
         transparent: true,
         opacity: 0.88,
         clearcoat: 1,
         iridescence: 0.6,
         envMap: env,
-        envMapIntensity: 2,
+        envMapIntensity: 1.1,
         flatShading: true,
       }),
       fly: plastic({ color: '#ff8a1f', emissive: '#ff5a00', emissiveIntensity: 0.9 }),
@@ -121,6 +121,7 @@ export function SceneV3() {
   const exitRef = useRef<THREE.Group>(null!)
   const arrowRef = useRef<THREE.Mesh>(null!)
   const light = useRef<THREE.DirectionalLight>(null!)
+  const wallRef = useRef<THREE.Mesh>(null!)
 
   const sim = useRef({
     game: newGame(0),
@@ -135,6 +136,9 @@ export function SceneV3() {
     camInit: false,
     zoom: 1,
     clock: 0,
+    wallKey: -1,
+    wallCount: -1,
+    wallGame: null as Game | null,
   })
 
   useEffect(() => {
@@ -277,7 +281,7 @@ export function SceneV3() {
 
     // --- Çizim ---
     const L = layers.current
-    const counts: Record<LayerKey, number> = { brick: 0, wall: 0, frame: 0, magic: 0, boulder: 0, jewel: 0, fly: 0, wingL: 0, wingR: 0, amoeba: 0, explode: 0 }
+    const counts: Record<LayerKey, number> = { brick: 0, frame: 0, magic: 0, boulder: 0, jewel: 0, fly: 0, wingL: 0, wingR: 0, amoeba: 0, explode: 0 }
     const put = (k: LayerKey, col?: THREE.Color) => {
       const m = L[k]
       if (!m) return
@@ -308,6 +312,8 @@ export function SceneV3() {
       return Math.abs(Math.sin(k * 16)) * Math.exp(-k * 9) * 0.12
     }
 
+    let wallKey = 0
+    let wallCount = 0
     let playerSeen = false
     let inboxAt = -1
     let exitAt = -1
@@ -324,8 +330,9 @@ export function SceneV3() {
           put('brick', DIRT_RGB[dirtColorIndex(x, y)])
           break
         case T.WALL:
-          dummy.position.set(wx(x), wy(y), 0)
-          put('wall', color.setScalar(0.92 + h * 0.08))
+          // duvarlar aşağıda tek parça çubuklar olarak çizilir
+          wallKey = (Math.imul(wallKey, 31) + i) | 0
+          wallCount++
           break
         case T.STEEL:
         case T.EXIT:
@@ -410,6 +417,20 @@ export function SceneV3() {
       m.count = counts[k]
       m.instanceMatrix.needsUpdate = true
       if (m.instanceColor) m.instanceColor.needsUpdate = true
+    }
+    // Duvar düzeni değiştiyse (yeni mağara ya da patlama) çubukları yeniden kur
+    if (wallKey !== s.wallKey || wallCount !== s.wallCount || g !== s.wallGame) {
+      s.wallKey = wallKey
+      s.wallCount = wallCount
+      s.wallGame = g
+      const runs = findBarRuns((x, y) => g.cells[y * W + x].t === T.WALL, W, H)
+      const old = wallRef.current.geometry
+      wallRef.current.geometry = barGeometry(
+        runs,
+        (x, y) => [wx(x), wy(y)],
+        (r) => DIRT_RGB[Math.floor(hash(r.x * 57 + r.y * 13 + r.len) * DIRT_RGB.length)],
+      )
+      old.dispose()
     }
     lord.visible = playerSeen
     if (!playerSeen) lord.moving = false
@@ -505,7 +526,7 @@ export function SceneV3() {
       </mesh>
 
       <instancedMesh ref={reg('brick')} args={[geo.brick, mat.brick, N]} castShadow receiveShadow frustumCulled={false} />
-      <instancedMesh ref={reg('wall')} args={[geo.brick, mat.wall, N]} castShadow receiveShadow frustumCulled={false} />
+      <mesh ref={wallRef} material={mat.wall} castShadow receiveShadow frustumCulled={false} />
       <instancedMesh ref={reg('frame')} args={[geo.tile, mat.frame, N]} castShadow receiveShadow frustumCulled={false} />
       <instancedMesh ref={reg('magic')} args={[geo.brick, mat.magic, N]} castShadow receiveShadow frustumCulled={false} />
       <instancedMesh ref={reg('boulder')} args={[geo.round, mat.boulder, N]} castShadow receiveShadow frustumCulled={false} />

@@ -80,7 +80,7 @@ export default function App() {
         <Canvas key="v3" shadows="soft" dpr={[1, 2]} camera={{ fov: 42, near: 0.5, far: 200, position: [0, 0, 30] }} gl={{ antialias: true }}>
           <SceneV3 />
           <EffectComposer multisampling={4}>
-            <Bloom luminanceThreshold={0.85} luminanceSmoothing={0.2} intensity={0.8} mipmapBlur />
+            <Bloom luminanceThreshold={1} luminanceSmoothing={0.2} intensity={0.6} mipmapBlur />
             <Vignette offset={0.35} darkness={0.55} />
           </EffectComposer>
         </Canvas>
