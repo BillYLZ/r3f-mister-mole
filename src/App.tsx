@@ -5,6 +5,7 @@ import { BlendFunction } from 'postprocessing'
 import { Vector2 } from 'three'
 import { Scene } from './Scene.tsx'
 import { SceneV2 } from './v2/SceneV2.tsx'
+import { SceneV3 } from './v3/SceneV3.tsx'
 import { useGame, LIVES } from './store.ts'
 import { CAVES } from './levels.ts'
 import { keyDir, press, release, setSnap, clearInput } from './input.ts'
@@ -75,6 +76,14 @@ export default function App() {
             <Vignette offset={0.3} darkness={0.7} />
           </EffectComposer>
         </Canvas>
+      ) : version === 3 ? (
+        <Canvas key="v3" shadows="soft" dpr={[1, 2]} camera={{ fov: 42, near: 0.5, far: 200, position: [0, 0, 30] }} gl={{ antialias: true }}>
+          <SceneV3 />
+          <EffectComposer multisampling={4}>
+            <Bloom luminanceThreshold={0.85} luminanceSmoothing={0.2} intensity={0.8} mipmapBlur />
+            <Vignette offset={0.35} darkness={0.55} />
+          </EffectComposer>
+        </Canvas>
       ) : (
         <Canvas key="v2" shadows="soft" dpr={[1, 2]} camera={{ fov: 42, near: 0.5, far: 200, position: [0, 0, 30] }} gl={{ antialias: true }}>
           <SceneV2 />
@@ -86,7 +95,7 @@ export default function App() {
           </EffectComposer>
         </Canvas>
       )}
-      {version === 2 && <DangerEdge />}
+      {version !== 1 && <DangerEdge />}
       <HudBar />
       <Overlay />
       <TouchPad />
@@ -129,12 +138,12 @@ function HudBar() {
   const version = useGame((s) => s.version)
   if (screen === 'title') return null
   return (
-    <div className={version === 2 ? 'bd-hud v2' : 'bd-hud'}>
+    <div className={version === 1 ? 'bd-hud' : `bd-hud v2${version === 3 ? ' v3' : ''}`}>
       <div className="bd-cave">
         <span className="bd-dim">Mağara {level + 1}</span> {CAVES[level].name}
       </div>
       <div className={`bd-gems ${hud.exitOpen ? 'open' : ''}`}>
-        {version === 2 ? <GemRing value={hud.diamonds} max={hud.needed} open={hud.exitOpen} /> : <span className="bd-gem">◆</span>}
+        {version !== 1 ? <GemRing value={hud.diamonds} max={hud.needed} open={hud.exitOpen} /> : <span className="bd-gem">◆</span>}
         <b>{hud.diamonds}</b>/{hud.needed}
         <span className="bd-dim"> ×{hud.value}</span>
       </div>
@@ -296,6 +305,10 @@ function VersionPicker() {
       <button role="radio" aria-checked={version === 2} className={version === 2 ? 'on' : ''} onClick={() => setVersion(2)}>
         <b>Sürüm 2</b>
         <span>Modern · karanlık mağara</span>
+      </button>
+      <button role="radio" aria-checked={version === 3} className={version === 3 ? 'on' : ''} onClick={() => setVersion(3)}>
+        <b>Sürüm 3</b>
+        <span>Oyuncak tuğla</span>
       </button>
     </div>
   )

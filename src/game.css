@@ -238,7 +238,7 @@ kbd {
 /* --- Sürüm seçici --- */
 .bd-version {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: repeat(3, 1fr);
   gap: 8px;
   margin: 0 0 14px;
 }
@@ -325,4 +325,26 @@ kbd {
   50% {
     opacity: 0.9;
   }
+}
+
+/* --- Sürüm 3 HUD: resimdeki oyun arayüzü gibi mor yuvarlak çipler --- */
+.bd-hud.v3 {
+  background: none;
+  backdrop-filter: none;
+  font-family: ui-rounded, 'Nunito', 'Trebuchet MS', system-ui, sans-serif;
+  font-weight: 800;
+}
+.bd-hud.v3 > div:not(.bd-buttons) {
+  background: linear-gradient(#6f66ee, #4b41c9);
+  border: 2px solid #8f88ff;
+  border-radius: 14px;
+  padding: 4px 12px;
+  box-shadow: 0 4px 0 #2c2490, 0 6px 14px rgba(0, 0, 0, 0.35);
+  text-shadow: 0 2px 0 rgba(30, 20, 110, 0.8);
+}
+.bd-hud.v3 .bd-buttons button {
+  background: linear-gradient(#5fd24a, #2f9e2f);
+  border: 2px solid #9af07f;
+  border-radius: 12px;
+  box-shadow: 0 4px 0 #1f6b1f;
 }

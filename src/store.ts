@@ -3,7 +3,7 @@ import { CAVES } from './levels.ts'
 
 export type Screen = 'title' | 'playing' | 'dead' | 'timeout' | 'won' | 'gameover' | 'complete'
 
-export type Version = 1 | 2
+export type Version = 1 | 2 | 3
 
 export interface Hud {
   diamonds: number
@@ -24,7 +24,7 @@ interface State {
   paused: boolean
   muted: boolean
   overview: boolean
-  version: Version // 1: klasik görünüm, 2: modern görünüm
+  version: Version // 1: klasik, 2: modern karanlık mağara, 3: oyuncak tuğla
   hud: Hud
   setHud: (h: Hud) => void
   start: (level: number) => void
@@ -38,7 +38,8 @@ interface State {
 
 const readVersion = (): Version => {
   try {
-    return localStorage.getItem('mister-mole-version') === '2' ? 2 : 1
+    const v = Number(localStorage.getItem('mister-mole-version'))
+    return v === 2 || v === 3 ? v : 1
   } catch {
     return 1
   }
