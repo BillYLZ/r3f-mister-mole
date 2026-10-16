@@ -172,27 +172,37 @@ function paint(g: THREE.BufferGeometry, c: THREE.Color) {
 }
 
 /**
- * Tüm duvar çubuklarını tek geometride birleştirir (köşeleri esnemeyen gerçek
- * uzun tuğlalar, her hücrede 2x2 düğme). Renk köşe renkleriyle verilir.
- * `toWorld` hücre koordinatını sahne koordinatına çevirir.
+ * Delikli kiriş: düğmesiz, uçları yuvarlak tek parça uzun parça; her hücrede
+ * bir yuvarlak delik. Tüm duvar dizileri tek geometride birleştirilir.
  */
-export function barGeometry(runs: BarRun[], toWorld: (x: number, y: number) => [number, number], colorOf: (r: BarRun) => THREE.Color, depth = 0.7) {
+export function beamGeometry(runs: BarRun[], toWorld: (x: number, y: number) => [number, number], colorOf: (r: BarRun) => THREE.Color, depth = 0.55) {
   const parts: THREE.BufferGeometry[] = []
+  const r0 = 0.45 // uç yarıçapı
   for (const r of runs) {
-    const c = colorOf(r)
+    const len = r.len - 0.06
+    const half = len / 2 - r0
+    const s = new THREE.Shape()
+    s.moveTo(-half, -r0)
+    s.lineTo(half, -r0)
+    s.absarc(half, 0, r0, -Math.PI / 2, Math.PI / 2, false)
+    s.lineTo(-half, r0)
+    s.absarc(-half, 0, r0, Math.PI / 2, (3 * Math.PI) / 2, false)
+    for (let k = 0; k < r.len; k++) {
+      const hole = new THREE.Path()
+      hole.absarc(-(r.len - 1) / 2 + k, 0, 0.19, 0, Math.PI * 2, true)
+      s.holes.push(hole)
+    }
+    const g = new THREE.ExtrudeGeometry(s, { depth, curveSegments: 20, bevelEnabled: true, bevelSize: 0.05, bevelThickness: 0.05, bevelSegments: 3 })
+    g.translate(0, 0, -depth / 2)
+    if (r.vertical) g.rotateZ(Math.PI / 2)
     const [x0, y0] = toWorld(r.x, r.y)
     const [x1, y1] = toWorld(r.vertical ? r.x : r.x + r.len - 1, r.vertical ? r.y + r.len - 1 : r.y)
-    const bw = r.vertical ? 0.96 : r.len - 0.04
-    const bh = r.vertical ? r.len - 0.04 : 0.96
-    parts.push(paint(nonIndexed(new RoundedBoxGeometry(bw, bh, depth, 3, 0.07)).translate((x0 + x1) / 2, (y0 + y1) / 2, 0), c))
-    for (let k = 0; k < r.len; k++) {
-      const [cx, cy] = toWorld(r.vertical ? r.x : r.x + k, r.vertical ? r.y + k : r.y)
-      for (const [sx, sy] of [[-0.24, -0.24], [0.24, -0.24], [-0.24, 0.24], [0.24, 0.24]]) {
-        const s = new THREE.CylinderGeometry(0.15, 0.15, 0.1, 16, 1).rotateX(Math.PI / 2).translate(cx + sx, cy + sy, depth / 2 + 0.05)
-        parts.push(paint(nonIndexed(s), c))
-      }
-    }
+    g.translate((x0 + x1) / 2, (y0 + y1) / 2, 0)
+    parts.push(paint(nonIndexed(g), colorOf(r)))
   }
   if (!parts.length) return new THREE.BufferGeometry()
   return mergeGeometries(parts)!
 }
+
+/** Kirişlerin klasik renkleri: açık gri, koyu gri, kırmızı, sarı, mavi. */
+export const BEAM_COLORS = ['#a7adb4', '#5b616b', PALETTE.red, PALETTE.yellow, PALETTE.blue]

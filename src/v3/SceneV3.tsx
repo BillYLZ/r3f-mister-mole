@@ -12,7 +12,7 @@ import { clearInput, takeInput } from '../input.ts'
 import { sfx } from '../sfx.ts'
 import { Particles } from '../Particles.ts'
 import { DarkLord, type LordState } from './DarkLord.tsx'
-import { DIRT_COLORS, PALETTE, arrowGeometry, barGeometry, dirtColorIndex, findBarRuns, jewel, moonTexture, roundBrick, studBrick, tile } from './bricks.ts'
+import { BEAM_COLORS, DIRT_COLORS, PALETTE, arrowGeometry, beamGeometry, dirtColorIndex, findBarRuns, jewel, moonTexture, roundBrick, studBrick, tile } from './bricks.ts'
 
 const TICK = 1 / TICKS_PER_SECOND
 const N = W * H
@@ -20,6 +20,7 @@ const wx = (x: number) => x - (W - 1) / 2
 const wy = (y: number) => (H - 1) / 2 - y
 const NONE: Input = { dir: -1, snap: false }
 const DIRT_RGB = DIRT_COLORS.map((c) => new THREE.Color(c))
+const BEAM_RGB = BEAM_COLORS.map((c) => new THREE.Color(c))
 const rgb = (c: THREE.Color): [number, number, number] => [c.r, c.g, c.b]
 
 function newGame(level: number): Game {
@@ -77,7 +78,17 @@ export function SceneV3() {
     [],
   )
   const plastic = (extra: THREE.MeshPhysicalMaterialParameters = {}) =>
-    new THREE.MeshPhysicalMaterial({ roughness: 0.3, clearcoat: 0.7, clearcoatRoughness: 0.2, envMap: env, envMapIntensity: 0.55, ...extra })
+    // Cilalı ABS plastik: düşük pürüz, tam cila katmanı, belirgin yansıma
+    new THREE.MeshPhysicalMaterial({
+      roughness: 0.2,
+      clearcoat: 1,
+      clearcoatRoughness: 0.06,
+      ior: 1.53,
+      specularIntensity: 1,
+      envMap: env,
+      envMapIntensity: 0.7,
+      ...extra,
+    })
   const mat = useMemo(
     () => ({
       brick: plastic(),
@@ -425,10 +436,10 @@ export function SceneV3() {
       s.wallGame = g
       const runs = findBarRuns((x, y) => g.cells[y * W + x].t === T.WALL, W, H)
       const old = wallRef.current.geometry
-      wallRef.current.geometry = barGeometry(
+      wallRef.current.geometry = beamGeometry(
         runs,
         (x, y) => [wx(x), wy(y)],
-        (r) => DIRT_RGB[Math.floor(hash(r.x * 57 + r.y * 13 + r.len) * DIRT_RGB.length)],
+        (r) => BEAM_RGB[Math.floor(hash(r.x * 57 + r.y * 13 + r.len) * BEAM_RGB.length)],
       )
       old.dispose()
     }
@@ -505,11 +516,11 @@ export function SceneV3() {
   return (
     <>
       <color attach="background" args={['#24206a']} />
-      <ambientLight intensity={0.55} color="#c9c4ff" />
-      <hemisphereLight args={['#ffffff', '#4a3fb0', 0.9]} />
+      <ambientLight intensity={0.3} color="#c9c4ff" />
+      <hemisphereLight args={['#ffffff', '#4a3fb0', 0.6]} />
       <directionalLight
         ref={light}
-        intensity={2.3}
+        intensity={2.8}
         color="#fff6ea"
         castShadow
         shadow-mapSize={[2048, 2048]}
