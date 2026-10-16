@@ -152,7 +152,7 @@ function Overlay() {
         {screen === 'title' && (
           <>
             <h1>
-              TAŞ AVCISI <span>3B</span>
+              MISTER <span>MOLE</span>
             </h1>
             <p className="bd-sub">Klasik bir maden oyununa modern bir 3B yorum</p>
             {cont('Oyna')}

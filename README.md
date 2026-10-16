@@ -1,10 +1,10 @@
-# Taş Avcısı 3B
+# Mister Mole
 
 <p align="center"><b>Demo:</b> <a href="https://billylz.github.io/r3f-mister-mole/">https://billylz.github.io/r3f-mister-mole/</a></p>
 
 1980'lerin klasik maden oyunlarından esinlenen, React Three Fiber ile yazılmış 3B bir maden oyunu. Grafikler, sesler ve mağaralar bu projeye özgüdür; hiçbir oyundan varlık kopyalanmamıştır.
 
-![Taş Avcısı 3B](docs/tas-avcisi.png)
+![Mister Mole](docs/mister-mole.png)
 
 ## Özellikler
 
