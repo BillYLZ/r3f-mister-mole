@@ -1,7 +1,7 @@
 import { create } from 'zustand'
 import { CAVES } from './levels.ts'
 
-export type Screen = 'title' | 'playing' | 'dead' | 'timeout' | 'won' | 'gameover' | 'complete'
+export type Screen = 'title' | 'playing' | 'dead' | 'timeout' | 'restart' | 'won' | 'gameover' | 'complete'
 
 export type Version = 1 | 2 | 3
 
@@ -30,7 +30,7 @@ interface State {
   start: (level: number) => void
   retry: () => void
   next: () => void
-  finish: (result: 'dead' | 'timeout' | 'won', caveScore: number) => void
+  finish: (result: 'dead' | 'timeout' | 'restart' | 'won', caveScore: number) => void
   toTitle: () => void
   toggle: (k: 'paused' | 'muted' | 'overview') => void
   setVersion: (v: Version) => void

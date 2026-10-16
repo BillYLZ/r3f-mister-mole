@@ -37,7 +37,7 @@ export default function App() {
           break
         case 'Escape':
           // Orijinaldeki gibi: sıkışınca mağarayı baştan al (bir can gider)
-          if (st.screen === 'playing') st.finish('dead', 0)
+          restartCave()
           break
         case 'KeyP':
           if (st.screen === 'playing') st.toggle('paused')
@@ -111,6 +111,7 @@ function continueGame() {
       st.start(0)
       break
     case 'dead':
+    case 'restart':
     case 'timeout':
       st.retry()
       break
@@ -201,12 +202,20 @@ function Overlay() {
           <>
             <h2>Duraklatıldı</h2>
             {cont('Devam')}
+            <div className="bd-row">
+              <button className="bd-secondary" onClick={restartCave}>
+                ↺ Baştan al <span className="bd-dim">(−1 can)</span>
+              </button>
+              <button className="bd-secondary" onClick={() => useGame.getState().toTitle()}>
+                ⌂ Ana menü
+              </button>
+            </div>
             <Controls />
           </>
         )}
-        {(screen === 'dead' || screen === 'timeout') && (
+        {(screen === 'dead' || screen === 'timeout' || screen === 'restart') && (
           <>
-            <h2>{screen === 'dead' ? 'Ezildin!' : 'Süre doldu!'}</h2>
+            <h2>{screen === 'dead' ? 'Ezildin!' : screen === 'timeout' ? 'Süre doldu!' : 'Mağara baştan'}</h2>
             <p>
               Kalan can: {lives}. <span className="bd-dim">{CAVES[level].hint}</span>
             </p>
@@ -242,7 +251,27 @@ function Overlay() {
   )
 }
 
+/** Sıkışınca mağarayı baştan al (orijinaldeki gibi bir can gider). Esc ve menü düğmesi. */
+function restartCave() {
+  const st = useGame.getState()
+  if (st.screen !== 'playing') return
+  if (st.paused) st.toggle('paused')
+  st.finish('restart', 0)
+}
+
+const isTouch = () => typeof window !== 'undefined' && window.matchMedia?.('(pointer: coarse)').matches
+
 function Controls() {
+  if (isTouch())
+    return (
+      <ul className="bd-controls">
+        <li>Sol alttaki yön tuşlarıyla hareket et</li>
+        <li>
+          <b>YERİNDE KAZ</b> basılıyken yön: yerinden kıpırdamadan kaz / al
+        </li>
+        <li>Sıkıştıysan ⏸ duraklat → ↺ Baştan al</li>
+      </ul>
+    )
   return (
     <ul className="bd-controls">
       <li>

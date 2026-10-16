@@ -352,3 +352,25 @@ kbd {
   border-radius: 12px;
   box-shadow: 0 4px 0 #1f6b1f;
 }
+
+/* Duraklatma menüsü ikincil düğmeleri (dokunmatikte Esc yerine) */
+.bd-row {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px;
+  margin: 12px 0 4px;
+}
+.bd-secondary {
+  font: inherit;
+  font-size: 15px;
+  color: var(--fg);
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 10px 16px;
+  cursor: pointer;
+}
+.bd-secondary:hover {
+  background: rgba(255, 200, 120, 0.15);
+}

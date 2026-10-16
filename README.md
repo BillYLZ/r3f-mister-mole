@@ -22,6 +22,7 @@ Ana menüden üç görünüm arasında seçim yapılır; seçim tarayıcıda hat
 - **Sürüm 3 · Oyuncak tuğla** (`src/v3/`): aydınlık mor sahne ve canlı renkli, düğmeli plastik tuğlalar. Ayrıca:
   - kayalar düğmeli gri toplar, elmaslar kristal mücevherler, çerçeve mor karolar;
   - sabit duvarlar uçları yuvarlak, delikli tek parça kirişler;
+  - oyuncu 2,5 saniye durursa çıkış noktasından halka halka yayılan yumuşak bir dalga başlar (hareket edince söner);
   - açılan çıkış beyaz oklu kırmızı bir karo;
   - kazılan tuğla kendi renginde parçalara, patlamalar rengarenk tuğla parçalarına ayrılır;
   - karakter, kara kasklı, pelerinli ve kırmızı enerji kılıçlı oyuncak figür **Kara Lord**.
@@ -40,7 +41,7 @@ Ana menüden üç görünüm arasında seçim yapılır; seçim tarayıcıda hat
 | --- | --- |
 | Ok tuşları / WASD | Hareket |
 | Shift + yön | Yerinden kıpırdamadan kaz veya al |
-| Esc | Sıkışınca mağarayı baştan al (bir can gider) |
+| Esc | Sıkışınca mağarayı baştan al (bir can gider). Telefonda: ⏸ → ↺ Baştan al |
 | P | Duraklat |
 | V | Genel görünüm |
 | M | Ses aç/kapat |

@@ -206,3 +206,58 @@ export function beamGeometry(runs: BarRun[], toWorld: (x: number, y: number) => 
 
 /** Kirişlerin klasik renkleri: açık gri, koyu gri, kırmızı, sarı, mavi. */
 export const BEAM_COLORS = ['#a7adb4', '#5b616b', PALETTE.red, PALETTE.yellow, PALETTE.blue]
+
+/** Dalga efektinin tüm malzemelerce paylaşılan değerleri. */
+export interface WaveUniforms {
+  uWaveAmp: { value: number }
+  uWaveTime: { value: number }
+  uWaveCenter: { value: THREE.Vector2 }
+  uWavePlayer: { value: THREE.Vector2 }
+}
+
+export function createWaveUniforms(): WaveUniforms {
+  return {
+    uWaveAmp: { value: 0 },
+    uWaveTime: { value: 0 },
+    uWaveCenter: { value: new THREE.Vector2() },
+    uWavePlayer: { value: new THREE.Vector2(1e4, 1e4) },
+  }
+}
+
+/**
+ * Malzemeye Z ekseninde dairesel dalga ekler: merkezden (çıkış) halka halka
+ * yayılır, uzaklaştıkça hafifçe söner, oyuncunun çevresinde sakin kalır.
+ * Hesap köşe gölgelendiricisinde dünya koordinatlarında yapılır; bu sayede
+ * örneklenmiş (instanced) tuğlalar da tek parça kirişler de aynı dalgaya uyar.
+ */
+export function addWave(mat: THREE.Material, u: WaveUniforms) {
+  mat.onBeforeCompile = (shader) => {
+    Object.assign(shader.uniforms, u)
+    shader.vertexShader = shader.vertexShader
+      .replace(
+        '#include <common>',
+        `#include <common>
+uniform float uWaveAmp;
+uniform float uWaveTime;
+uniform vec2 uWaveCenter;
+uniform vec2 uWavePlayer;`,
+      )
+      .replace(
+        '#include <project_vertex>',
+        `vec4 waveWorld = vec4( transformed, 1.0 );
+#ifdef USE_BATCHING
+	waveWorld = batchingMatrix * waveWorld;
+#endif
+#ifdef USE_INSTANCING
+	waveWorld = instanceMatrix * waveWorld;
+#endif
+waveWorld = modelMatrix * waveWorld;
+float waveD = distance( waveWorld.xy, uWaveCenter );
+float waveCalm = smoothstep( 1.2, 3.2, distance( waveWorld.xy, uWavePlayer ) );
+waveWorld.z += uWaveAmp * waveCalm * sin( waveD * 0.9 - uWaveTime * 2.6 ) / ( 1.0 + waveD * 0.035 );
+vec4 mvPosition = viewMatrix * waveWorld;
+gl_Position = projectionMatrix * mvPosition;`,
+      )
+  }
+  mat.customProgramCacheKey = () => 'wave-v3'
+}

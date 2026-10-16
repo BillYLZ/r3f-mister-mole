@@ -12,13 +12,15 @@ import { clearInput, takeInput } from '../input.ts'
 import { sfx } from '../sfx.ts'
 import { Particles } from '../Particles.ts'
 import { DarkLord, type LordState } from './DarkLord.tsx'
-import { BEAM_COLORS, DIRT_COLORS, PALETTE, arrowGeometry, beamGeometry, dirtColorIndex, findBarRuns, jewel, moonTexture, roundBrick, studBrick, tile } from './bricks.ts'
+import { BEAM_COLORS, DIRT_COLORS, PALETTE, addWave, arrowGeometry, beamGeometry, createWaveUniforms, dirtColorIndex, findBarRuns, jewel, moonTexture, roundBrick, studBrick, tile } from './bricks.ts'
 
 const TICK = 1 / TICKS_PER_SECOND
 const N = W * H
 const wx = (x: number) => x - (W - 1) / 2
 const wy = (y: number) => (H - 1) / 2 - y
 const NONE: Input = { dir: -1, snap: false }
+const IDLE_BEFORE_WAVE = 2.5 // saniye
+const WAVE_AMP = 0.32
 const DIRT_RGB = DIRT_COLORS.map((c) => new THREE.Color(c))
 const BEAM_RGB = BEAM_COLORS.map((c) => new THREE.Color(c))
 const rgb = (c: THREE.Color): [number, number, number] => [c.r, c.g, c.b]
@@ -121,6 +123,13 @@ export function SceneV3() {
     [env],
   )
 
+  // Oyuncu durunca çıkıştan yayılan dalga: tüm tuğla malzemelerine eklenir
+  const wave = useMemo(() => {
+    const u = createWaveUniforms()
+    for (const m of Object.values(mat)) addWave(m, u)
+    return u
+  }, [mat])
+
   const layers = useRef<Partial<Record<LayerKey, THREE.InstancedMesh>>>({})
   const reg = (k: LayerKey) => (m: THREE.InstancedMesh | null) => {
     if (m) layers.current[k] = m
@@ -147,6 +156,9 @@ export function SceneV3() {
     camInit: false,
     zoom: 1,
     clock: 0,
+    idle: 0,
+    waveAmp: 0,
+    waveTime: 0,
     wallKey: -1,
     wallCount: -1,
     wallGame: null as Game | null,
@@ -161,6 +173,8 @@ export function SceneV3() {
     s.ended = false
     s.endTimer = 0
     s.camInit = false
+    s.idle = 0
+    s.waveAmp = 0
     clearInput()
   }, [level, gameKey])
 
@@ -445,6 +459,19 @@ export function SceneV3() {
     }
     lord.visible = playerSeen
     if (!playerSeen) lord.moving = false
+
+    // Hareketsizlik sayacı: oyuncu 2,5 sn durursa dalga yumuşakça başlar,
+    // hareket edince yumuşakça söner
+    s.idle = lord.moving ? 0 : s.idle + dt
+    const waveOn = s.idle > IDLE_BEFORE_WAVE && !st.paused
+    s.waveAmp = THREE.MathUtils.damp(s.waveAmp, waveOn ? WAVE_AMP : 0, waveOn ? 1.6 : 5, dt)
+    if (s.waveAmp > 0.001) s.waveTime += dt
+    else s.waveTime = 0
+    wave.uWaveAmp.value = s.waveAmp
+    wave.uWaveTime.value = s.waveTime
+    if (exitAt >= 0) wave.uWaveCenter.value.set(wx(exitAt % W), wy(Math.floor(exitAt / W)))
+    if (playerSeen) wave.uWavePlayer.value.set(lord.x, lord.y)
+    else wave.uWavePlayer.value.set(1e4, 1e4)
 
     mat.magic.emissiveIntensity = g.magic === 'active' ? 0.8 + Math.sin(t * 12) * 0.5 : 0.15
 
