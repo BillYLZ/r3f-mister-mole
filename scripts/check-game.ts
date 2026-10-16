@@ -1,4 +1,4 @@
-// Boulder Dash motoru için davranış testleri: node --experimental-strip-types scripts/check-boulder.ts
+// Oyun motoru için davranış testleri: node --experimental-strip-types scripts/check-game.ts
 import { T, createGame, step, tilesFromRows, at, countTiles, type CaveSettings, type Game, type Input } from '../src/engine.ts'
 import { CAVES, W, H, buildCave } from '../src/levels.ts'
 
@@ -188,4 +188,4 @@ if (failed) {
   console.error(`\n${failed} kontrol başarısız`)
   process.exit(1)
 }
-console.log('\nTüm Boulder kontrolleri geçti')
+console.log('\nTüm oyun kontrolleri geçti')

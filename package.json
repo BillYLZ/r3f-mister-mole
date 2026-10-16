@@ -1,5 +1,5 @@
 {
-  "name": "r3f-boulder3dash",
+  "name": "r3f-mister-mole",
   "private": true,
   "version": "0.1.0",
   "type": "module",
@@ -7,7 +7,7 @@
     "dev": "vite",
     "build": "tsc -p . && vite build",
     "preview": "vite preview",
-    "test": "node --experimental-strip-types scripts/check-boulder.ts"
+    "test": "node --experimental-strip-types scripts/check-game.ts"
   },
   "dependencies": {
     "@react-three/fiber": "^9.8.1",

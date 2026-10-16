@@ -34,7 +34,7 @@ interface State {
 
 const readBest = () => {
   try {
-    return Number(localStorage.getItem('boulder3d-best')) || 0
+    return Number(localStorage.getItem('mister-mole-best')) || 0
   } catch {
     return 0
   }
@@ -76,7 +76,7 @@ export const useGame = create<State>((set, get) => ({
 
 function saveBest(score: number) {
   try {
-    if (score > readBest()) localStorage.setItem('boulder3d-best', String(score))
+    if (score > readBest()) localStorage.setItem('mister-mole-best', String(score))
   } catch {
     // depolama kapalıysa rekor yalnızca bu oturumda tutulur
   }

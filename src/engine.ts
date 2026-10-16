@@ -1,4 +1,4 @@
-// Boulder Dash tarzı mağara motoru: render'dan bağımsız, deterministik (tohumlu RNG).
+// Klasik maden oyunu tarzı mağara motoru: render'dan bağımsız, deterministik (tohumlu RNG).
 // Kurallar orijinal oyunun belgelenmiş davranışını izler: ızgara her tick'te
 // yukarıdan aşağı, soldan sağa taranır; taşınan nesne "tarandı" olarak işaretlenir
 // ki aynı tick'te ikinci kez işlenmesin.
