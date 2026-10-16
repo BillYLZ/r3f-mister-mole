@@ -10,7 +10,10 @@ export interface LordState {
   dir: number
   moving: boolean
   visible: boolean
+  strikeAt: number // son kılıç vuruşu (performance.now saniye)
 }
+
+const STRIKE = 0.35 // savuruş süresi (sn)
 
 /** Figür gövdesi: üstü dar, altı geniş kesik piramit. */
 function torsoGeometry() {
@@ -43,6 +46,9 @@ export function DarkLord({ state }: { state: LordState }) {
   const armR = useRef<THREE.Group>(null!)
   const cape = useRef<THREE.Group>(null!)
   const blade = useRef<THREE.Mesh>(null!)
+  const halo = useRef<THREE.Mesh>(null!)
+  const glow = useRef<THREE.Mesh>(null!)
+  const saberLight = useRef<THREE.PointLight>(null!)
   const panel = useRef<THREE.Mesh[]>([])
   const phase = useRef(0)
 
@@ -54,7 +60,10 @@ export function DarkLord({ state }: { state: LordState }) {
       grey: new THREE.MeshPhysicalMaterial({ color: '#6b6e78', roughness: 0.3, metalness: 0.4, clearcoat: 1 }),
       cape: new THREE.MeshStandardMaterial({ color: '#111114', roughness: 0.75, side: THREE.DoubleSide }),
       eye: new THREE.MeshBasicMaterial({ color: new THREE.Color(5, 0.3, 0.2), toneMapped: false }),
-      blade: new THREE.MeshBasicMaterial({ color: new THREE.Color(6, 0.5, 0.4), toneMapped: false }),
+      // Filmlerdeki gibi: beyaz-sıcak çekirdek, etrafında kırmızı ışıma
+      blade: new THREE.MeshBasicMaterial({ color: new THREE.Color(7, 5.5, 5), toneMapped: false }),
+      halo: new THREE.MeshBasicMaterial({ color: new THREE.Color(5, 0.25, 0.12), toneMapped: false, transparent: true, opacity: 0.55, blending: THREE.AdditiveBlending, depthWrite: false }),
+      glow: new THREE.MeshBasicMaterial({ color: new THREE.Color(3, 0.1, 0.05), toneMapped: false, transparent: true, opacity: 0.18, blending: THREE.AdditiveBlending, depthWrite: false }),
       hilt: new THREE.MeshPhysicalMaterial({ color: '#c9ccd6', metalness: 0.9, roughness: 0.25 }),
       lights: ['#ff3030', '#30ff60', '#3080ff'].map((c) => new THREE.MeshBasicMaterial({ color: new THREE.Color(c).multiplyScalar(3), toneMapped: false })),
     }),
@@ -74,19 +83,35 @@ export function DarkLord({ state }: { state: LordState }) {
     legL.current.rotation.x = THREE.MathUtils.damp(legL.current.rotation.x, s * 0.7 * m, 18, dt)
     legR.current.rotation.x = THREE.MathUtils.damp(legR.current.rotation.x, -s * 0.7 * m, 18, dt)
     armL.current.rotation.x = THREE.MathUtils.damp(armL.current.rotation.x, -s * 0.6 * m - 0.1, 18, dt)
-    // Kılıçlı kol: yürürken önde, dururken havada kılıç tutar
-    armR.current.rotation.x = THREE.MathUtils.damp(armR.current.rotation.x, m ? -1.2 + s * 0.2 : -0.6 + Math.sin(t * 1.5) * 0.08, 12, dt)
+    // Kılıçlı kol: yürürken önde, dururken havada kılıç tutar; vuruşta
+    // yukarıdan aşağı hızlı bir savuruş yapar
+    const k = performance.now() / 1000 - state.strikeAt
+    if (k >= 0 && k < STRIKE) {
+      const e = 1 - (1 - k / STRIKE) ** 3
+      armR.current.rotation.x = -2.5 + e * 2.9
+      armR.current.rotation.z = 0.15 + Math.sin(e * Math.PI) * 0.5
+    } else {
+      armR.current.rotation.x = THREE.MathUtils.damp(armR.current.rotation.x, m ? -1.2 + s * 0.2 : -0.6 + Math.sin(t * 1.5) * 0.08, 12, dt)
+      armR.current.rotation.z = THREE.MathUtils.damp(armR.current.rotation.z, 0.15, 12, dt)
+    }
+    // Kılıç parlaması: vuruşta ışıma büyür, çevreye kırmızı ışık saçılır
+    const flare = k >= 0 ? Math.exp(-k * 5) : 0
+    const hum = 1 + Math.sin(t * 40) * 0.06 + Math.sin(t * 97) * 0.04
+    halo.current.scale.set(hum * (1 + flare * 1.6), 1, hum * (1 + flare * 1.6))
+    glow.current.scale.set(hum * (1 + flare * 2.5), 1, hum * (1 + flare * 2.5))
+    mats.halo.opacity = 0.55 + flare * 0.4
+    mats.glow.opacity = 0.18 + flare * 0.3
+    saberLight.current.intensity = (1.8 + flare * 9) * hum
     body.current.position.y = m * Math.abs(s) * 0.035
     // Pelerin yürürken arkaya savrulur
     cape.current.rotation.x = THREE.MathUtils.damp(cape.current.rotation.x, 0.08 + m * (0.35 + Math.abs(s) * 0.1), 8, dt)
     // Kılıç vızıltısı ve göğüs paneli ışıkları
-    blade.current.scale.x = blade.current.scale.z = 1 + Math.sin(t * 40) * 0.08
     panel.current.forEach((p, i) => (p.visible = Math.sin(t * 3 + i * 2.1) > -0.3))
   })
 
   return (
     <group ref={root} scale={1.05}>
-      <pointLight position={[0.3, 0.1, 0.5]} intensity={1.6} distance={2.5} decay={1.5} color="#ff3a2a" />
+      <pointLight ref={saberLight} position={[0.35, 0.15, 0.6]} intensity={1.8} distance={4} decay={1.5} color="#ff3a2a" />
       <group ref={body}>
         {/* bacaklar ve kalça */}
         <mesh material={mats.black} position={[0, -0.13, 0]}>
@@ -141,7 +166,13 @@ export function DarkLord({ state }: { state: LordState }) {
               <cylinderGeometry args={[0.022, 0.022, 0.14, 12]} />
             </mesh>
             <mesh ref={blade} material={mats.blade} position={[0, 0, 0.4]} rotation={[Math.PI / 2, 0, 0]}>
-              <cylinderGeometry args={[0.018, 0.018, 0.66, 10]} />
+              <capsuleGeometry args={[0.014, 0.64, 4, 10]} />
+            </mesh>
+            <mesh ref={halo} material={mats.halo} position={[0, 0, 0.4]} rotation={[Math.PI / 2, 0, 0]}>
+              <capsuleGeometry args={[0.034, 0.66, 4, 12]} />
+            </mesh>
+            <mesh ref={glow} material={mats.glow} position={[0, 0, 0.4]} rotation={[Math.PI / 2, 0, 0]}>
+              <capsuleGeometry args={[0.07, 0.68, 4, 12]} />
             </mesh>
           </group>
         </group>

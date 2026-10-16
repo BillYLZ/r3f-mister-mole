@@ -25,7 +25,7 @@ Ana menüden üç görünüm arasında seçim yapılır; seçim tarayıcıda hat
   - oyuncu 2,5 saniye durursa çıkış noktasından halka halka yayılan yumuşak bir dalga başlar: her tuğla bütün olarak Z ekseninde ileri geri gider, sabit duvarlar ve çerçeve yerinde kalır (hareket edince söner);
   - açılan çıkış beyaz oklu kırmızı bir karo;
   - kazılan tuğla kendi renginde parçalara, patlamalar rengarenk tuğla parçalarına ayrılır;
-  - karakter, kara kasklı, pelerinli ve kırmızı enerji kılıçlı oyuncak figür **Kara Lord**.
+  - karakter, kara kasklı, pelerinli ve kırmızı enerji kılıçlı oyuncak figür **Kara Lord**. Robota ulaşınca kılıcını savurur: sıfırdan sentezlenen kılıç sesi, beyaz çekirdekli kırmızı ışıma ve çevreye saçılan kırmızı ışık.
 
 ![Mister Mole Sürüm 3](docs/mister-mole-v3.png)
 

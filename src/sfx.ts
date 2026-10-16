@@ -65,7 +65,78 @@ function noise(dur: number, freq: number, peak = 0.3, q = 1, sweepTo?: number) {
   s.stop(t + dur + 0.05)
 }
 
+/**
+ * Lazer kılıç savurma sesi (sıfırdan sentez): iki hafif farklı testere dişi
+ * dalgadan alçak uğultu, savrulurken yükselip alçalan filtre ("vuuummm"),
+ * süpürülen gürültüden vınlama ve vuruş anında kısa bir cızırtı.
+ */
+function saberSwing() {
+  if (!ctx || !master || !noiseBuf || muted) return
+  const t = ctx.currentTime
+  const out = ctx.createGain()
+  out.gain.setValueAtTime(0.0001, t)
+  out.gain.exponentialRampToValueAtTime(0.5, t + 0.04)
+  out.gain.exponentialRampToValueAtTime(0.25, t + 0.3)
+  out.gain.exponentialRampToValueAtTime(0.0001, t + 0.75)
+  out.connect(master)
+  const lp = ctx.createBiquadFilter()
+  lp.type = 'lowpass'
+  lp.Q.value = 7
+  lp.frequency.setValueAtTime(350, t)
+  lp.frequency.exponentialRampToValueAtTime(2600, t + 0.13)
+  lp.frequency.exponentialRampToValueAtTime(450, t + 0.6)
+  lp.connect(out)
+  for (const f of [90, 95.5, 181]) {
+    const o = ctx.createOscillator()
+    o.type = 'sawtooth'
+    o.frequency.setValueAtTime(f, t)
+    o.frequency.exponentialRampToValueAtTime(f * 1.55, t + 0.13) // Doppler benzeri yükseliş
+    o.frequency.exponentialRampToValueAtTime(f * 0.92, t + 0.6)
+    const g = ctx.createGain()
+    g.gain.value = f > 150 ? 0.25 : 0.5
+    // hafif titreşim (vibrato) uğultuyu canlı kılar
+    const lfo = ctx.createOscillator()
+    const lfoGain = ctx.createGain()
+    lfo.frequency.value = 7
+    lfoGain.gain.value = f * 0.02
+    lfo.connect(lfoGain).connect(o.frequency)
+    o.connect(g).connect(lp)
+    o.start(t)
+    lfo.start(t)
+    o.stop(t + 0.8)
+    lfo.stop(t + 0.8)
+  }
+  // vınlama: bant geçiren gürültü süpürmesi
+  const n = ctx.createBufferSource()
+  n.buffer = noiseBuf
+  const bp = ctx.createBiquadFilter()
+  bp.type = 'bandpass'
+  bp.Q.value = 2.5
+  bp.frequency.setValueAtTime(400, t)
+  bp.frequency.exponentialRampToValueAtTime(2200, t + 0.12)
+  bp.frequency.exponentialRampToValueAtTime(500, t + 0.5)
+  const ng = ctx.createGain()
+  ng.gain.value = 0.35
+  n.connect(bp).connect(ng).connect(out)
+  n.start(t, Math.random() * 0.5)
+  n.stop(t + 0.75)
+  // vuruş cızırtısı
+  const c = ctx.createBufferSource()
+  c.buffer = noiseBuf
+  const hp = ctx.createBiquadFilter()
+  hp.type = 'highpass'
+  hp.frequency.value = 2500
+  const cg = ctx.createGain()
+  cg.gain.setValueAtTime(0.0001, t + 0.1)
+  cg.gain.exponentialRampToValueAtTime(0.35, t + 0.12)
+  cg.gain.exponentialRampToValueAtTime(0.0001, t + 0.26)
+  c.connect(hp).connect(cg).connect(master)
+  c.start(t + 0.1, Math.random() * 0.5)
+  c.stop(t + 0.3)
+}
+
 export const sfx = {
+  saber: saberSwing,
   dig: () => noise(0.07, 1800, 0.12),
   collect: () => {
     tone('triangle', 1320, 2640, 0.12, 0.2)

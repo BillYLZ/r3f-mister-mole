@@ -126,7 +126,7 @@ export function SceneV3() {
   }
 
   const particles = useMemo(() => new Particles(1200), [])
-  const lord = useRef<LordState>({ x: 0, y: 0, dir: 1, moving: false, visible: false }).current
+  const lord = useRef<LordState>({ x: 0, y: 0, dir: 1, moving: false, visible: false, strikeAt: -10 }).current
   const inboxRef = useRef<THREE.Mesh>(null!)
   const exitRef = useRef<THREE.Group>(null!)
   const arrowRef = useRef<THREE.Mesh>(null!)
@@ -203,7 +203,10 @@ export function SceneV3() {
           particles.burst(wx(e.x), wy(e.y), 0.5, 10, rgb(DIRT_RGB[dirtColorIndex(e.x, e.y)]), { speed: 3, life: 0.7, size: 0.13, gravity: 12 })
           break
         case 'collect':
-          play('collect', sfx.collect)
+          // Kara Lord robota lazer kılıçla vurur: kılıç sesi, parlama, kıvılcım
+          play('collect', sfx.saber)
+          lord.strikeAt = performance.now() / 1000
+          particles.burst(wx(e.x), wy(e.y), 0.6, 18, [5, 0.6, 0.3], { speed: 5, life: 0.5, size: 0.04, gravity: 4 })
           // robot toplanınca beyaz-mavi parçalar
           particles.burst(wx(e.x), wy(e.y), 0.5, 14, [2.2, 2.3, 2.6], { speed: 4, life: 0.8, size: 0.07, gravity: -2 })
           particles.burst(wx(e.x), wy(e.y), 0.5, 14, [0.4, 1.2, 3.4], { speed: 4, life: 0.8, size: 0.07, gravity: -2 })
