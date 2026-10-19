@@ -8,6 +8,8 @@ import { T, TICKS_PER_SECOND, createGame, step, timeLeft, type Game, type GameEv
 import { CAVES, W, H, buildCave, caveSeed } from './levels.ts'
 import { useGame } from './store.ts'
 import { clearInput, takeInput } from './input.ts'
+import { autoInput, setLiveGame } from './autopilot.ts'
+import { SolutionPath } from './SolutionPath.tsx'
 import { sfx } from './sfx.ts'
 import { makeTextures } from './textures.ts'
 import { Particles } from './Particles.ts'
@@ -125,6 +127,7 @@ export function Scene() {
   useEffect(() => {
     const s = sim.current
     s.game = newGame(level)
+    setLiveGame(s.game)
     s.acc = 0
     s.prev.clear()
     s.ended = false
@@ -216,7 +219,7 @@ export function Scene() {
     const s = sim.current
     const g = s.game
     const live = st.screen === 'playing'
-    const running = (live || st.screen === 'title') && !st.paused
+    const running = (live || st.screen === 'title') && !st.paused && st.solve !== 'solving'
 
     // --- Simülasyon adımları ---
     if (running) {
@@ -230,7 +233,7 @@ export function Scene() {
           if (c.id) s.prev.set(c.id, i)
         }
         const before = g.status
-        const events = step(g, live ? takeInput() : NONE)
+        const events = step(g, live ? (autoInput() ?? takeInput()) : NONE)
         handleEvents(events, live)
         const tl = timeLeft(g)
         if (live && g.status === 'playing' && g.player.spawned && tl !== s.lastTime && tl <= 10 && tl > 0) sfx.tick()
@@ -500,6 +503,7 @@ export function Scene() {
       </group>
 
       <Miner state={miner} />
+      <SolutionPath color={[3.2, 2.4, 0.5]} />
     </>
   )
 }

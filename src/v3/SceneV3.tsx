@@ -9,6 +9,8 @@ import { T, TICKS_PER_SECOND, createGame, step, timeLeft, type Game, type GameEv
 import { CAVES, W, H, buildCave, caveSeed } from '../levels.ts'
 import { useGame } from '../store.ts'
 import { clearInput, takeInput } from '../input.ts'
+import { autoInput, setLiveGame } from '../autopilot.ts'
+import { SolutionPath } from '../SolutionPath.tsx'
 import { sfx } from '../sfx.ts'
 import { Particles } from '../Particles.ts'
 import { DarkLord, type LordState } from './DarkLord.tsx'
@@ -158,6 +160,7 @@ export function SceneV3() {
   useEffect(() => {
     const s = sim.current
     s.game = newGame(level)
+    setLiveGame(s.game)
     s.acc = 0
     s.prev.clear()
     s.landAt.clear()
@@ -267,7 +270,7 @@ export function SceneV3() {
     const st = useGame.getState()
     const g = s.game
     const live = st.screen === 'playing'
-    const running = (live || st.screen === 'title') && !st.paused
+    const running = (live || st.screen === 'title') && !st.paused && st.solve !== 'solving'
 
     // --- Simülasyon adımları (Sürüm 1 ile aynı) ---
     if (running) {
@@ -281,7 +284,7 @@ export function SceneV3() {
           if (c.id) s.prev.set(c.id, i)
         }
         const before = g.status
-        const events = step(g, live ? takeInput() : NONE)
+        const events = step(g, live ? (autoInput() ?? takeInput()) : NONE)
         handleEvents(events, live)
         const tl = timeLeft(g)
         if (live && g.status === 'playing' && g.player.spawned && tl !== s.lastTime && tl <= 10 && tl > 0) sfx.tick()
@@ -588,6 +591,7 @@ export function SceneV3() {
       </group>
 
       <DarkLord state={lord} />
+      <SolutionPath color={[0.13, 0.05, 0.32]} glow={false} size={0.17} z={0.75} />
     </>
   )
 }

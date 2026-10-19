@@ -6,9 +6,16 @@ const held: number[] = []
 let latched = -1
 let snapHeld = false
 
+let pressListener: (() => void) | null = null
+/** Oyuncu bir yön tuşuna bastığında haber al (otomatik pilotu durdurmak için). */
+export function setPressListener(f: () => void) {
+  pressListener = f
+}
+
 export function press(dir: number) {
   if (!held.includes(dir)) held.push(dir)
   latched = dir
+  pressListener?.()
 }
 export function release(dir: number) {
   const i = held.indexOf(dir)

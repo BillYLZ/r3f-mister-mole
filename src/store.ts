@@ -4,6 +4,7 @@ import { CAVES, SEED_MAX } from './levels.ts'
 export type Screen = 'title' | 'playing' | 'dead' | 'timeout' | 'restart' | 'won' | 'gameover' | 'complete'
 
 export type Version = 1 | 2 | 3
+export type SolveState = 'idle' | 'solving' | 'running' | 'failed'
 
 export interface Hud {
   diamonds: number
@@ -26,6 +27,8 @@ interface State {
   overview: boolean
   version: Version // 1: klasik, 2: modern karanlık mağara, 3: oyuncak tuğla
   seed: number | null // harita tohumu; null = her mağaranın varsayılan tohumu
+  solve: SolveState // çözüm düğmesinin durumu
+  solveMessage: string
   hud: Hud
   setHud: (h: Hud) => void
   start: (level: number) => void
@@ -36,6 +39,7 @@ interface State {
   toggle: (k: 'paused' | 'muted' | 'overview') => void
   setVersion: (v: Version) => void
   setSeed: (seed: number | null) => void
+  setSolve: (s: SolveState, message?: string) => void
 }
 
 const readSeed = (): number | null => {
@@ -80,6 +84,9 @@ export const useGame = create<State>((set, get) => ({
   overview: false,
   version: readVersion(),
   seed: readSeed(),
+  solve: 'idle',
+  solveMessage: '',
+  setSolve: (solve, message = '') => set({ solve, solveMessage: message }),
   hud: { diamonds: 0, needed: 0, value: 0, time: 0, score: 0, exitOpen: false },
   setHud: (hud) => set({ hud }),
   start: (level) => set((s) => ({ screen: 'playing', level, lives: LIVES, totalScore: 0, gameKey: s.gameKey + 1, paused: false })),

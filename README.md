@@ -35,6 +35,14 @@ Ana menüden üç görünüm arasında seçim yapılır; seçim tarayıcıda hat
 - **Mağaralar** (`src/levels.ts`): klasik oyunlardaki gibi tohumlu rastgele dolgu üzerine çizim komutlarıyla üretilen 6 mağara.
 - **Görünüm**: instanced mesh'ler, iki tick arasında yumuşak hareket, gölgeler, bloom, parçacıklar, kafa lambalı madenci, kamera takibi ve sarsıntı. Sesler Web Audio ile sentezlenir. Dokunmatik ekranlar için yön tuşları vardır.
 
+## Çözüm düğmesi
+
+Sağ üstteki **💡 Çözüm** düğmesi (kısayol **H**) üç sürümde de çalışır: o anki durumdan mağaranın çözümünü bulur, karakterin gideceği yolu parlak noktalarla çizer ve hamleleri kendisi yapar. **■ Durdur** ya da herhangi bir yön tuşu kontrolü oyuncuya geri verir.
+
+Çözücü (`src/solver.ts`) oyunun kopyasını motorla adım adım ileri simüle eder; motor belirlenimci olduğu için bulunan hamleler gerçek oyunda aynen oynanınca aynı sonucu verir. Aranan hamleler: en yakın elmasa en kısa yoldan gitmek (her adım simüle edilir, ölümle biten adımlar elenir), taş itmek, altındaki toprağı yandan kazarak taş düşürmek (kelebek ezmek ya da sihirli duvardan elmas elde etmek için) ve tıkanan yolları açmak için keşif. Çıkmaz sokakta geri dönülür. Arama ayrı bir iş parçacığında (Web Worker) çalışır, en fazla 10 saniye sürer.
+
+Testler 6 varsayılan mağaranın hepsinin çözüldüğünü ve çözümün tekrar oynatılınca kazandığını doğrular. Başka harita tohumlarında çözücü her zaman çözüm bulamayabilir; bulamazsa bunu söyler.
+
 ## Harita tohumu
 
 Mağaralar orijinal oyundaki gibi tohumlu rastgele dolgu ile üretilir: aynı tohum her seferinde aynı haritayı verir. Ana menüdeki **Harita tohumu** kutusu:

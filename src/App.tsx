@@ -10,6 +10,7 @@ import { useGame, LIVES } from './store.ts'
 import { CAVES, SEED_MAX, caveSeed } from './levels.ts'
 import { keyDir, press, release, setSnap, clearInput } from './input.ts'
 import { setMuted, unlockAudio } from './sfx.ts'
+import { startSolve } from './autopilot.ts'
 
 const CA_OFFSET = new Vector2(0.0008, 0.0008)
 
@@ -49,6 +50,9 @@ export default function App() {
           break
         case 'KeyV':
           st.toggle('overview')
+          break
+        case 'KeyH':
+          if (st.screen === 'playing') startSolve()
           break
       }
     }
@@ -154,6 +158,7 @@ function HudBar() {
       <div className="bd-score">{String(hud.score).padStart(6, '0')}</div>
       <div className="bd-lives">{'♥'.repeat(Math.max(0, lives))}<span className="bd-dim">{'♥'.repeat(Math.max(0, LIVES - lives))}</span></div>
       <div className="bd-buttons">
+        <SolveButton />
         <button onClick={() => toggle('paused')} title="Duraklat (P)">{paused ? '▶' : '⏸'}</button>
         <button onClick={restartCave} title="Mağarayı baştan al, bir can gider (Esc)">↺</button>
         <button onClick={() => toggle('overview')} title="Genel görünüm (V)">⛶</button>
@@ -279,6 +284,7 @@ function Controls() {
           <b>YERİNDE KAZ</b> basılıyken yön: yerinden kıpırdamadan kaz / al
         </li>
         <li>Sıkıştıysan üstteki ↺ düğmesi mağarayı baştan alır (bir can gider)</li>
+        <li>💡 Çözüm: yolu çizer ve mağarayı kendisi oynar; bir yön tuşu kontrolü geri alır</li>
       </ul>
     )
   return (
@@ -290,7 +296,7 @@ function Controls() {
         <kbd>Shift</kbd> + yön: yerinden kıpırdamadan kaz / al
       </li>
       <li>
-        <kbd>Esc</kbd> sıkıştıysan baştan al · <kbd>P</kbd> duraklat · <kbd>V</kbd> genel görünüm · <kbd>M</kbd> ses · fare tekerleği yakınlaştır
+        <kbd>H</kbd> çözüm · <kbd>Esc</kbd> sıkıştıysan baştan al · <kbd>P</kbd> duraklat · <kbd>V</kbd> genel görünüm · <kbd>M</kbd> ses · fare tekerleği yakınlaştır
       </li>
     </ul>
   )
@@ -404,5 +410,25 @@ function SeedPicker() {
         Varsayılan
       </button>
     </div>
+  )
+}
+
+/** Sağ üstte çözüm düğmesi: yolu bulur, çizer ve hamleleri kendisi yapar. */
+function SolveButton() {
+  const solve = useGame((s) => s.solve)
+  const message = useGame((s) => s.solveMessage)
+  const label = solve === 'solving' ? '⏳ Çözülüyor' : solve === 'running' ? '■ Durdur' : '💡 Çözüm'
+  return (
+    <>
+      <button
+        className={`bd-solve ${solve}`}
+        onClick={() => (unlockAudio(), startSolve())}
+        disabled={solve === 'solving'}
+        title={solve === 'running' ? 'Otomatik oynamayı durdur (bir yön tuşu da durdurur)' : 'Bu mağaranın çözümünü bul, yolu çiz ve oyna (H)'}
+      >
+        {label}
+      </button>
+      {solve === 'failed' && message && <div className="bd-toast">{message}</div>}
+    </>
   )
 }

@@ -76,7 +76,7 @@ export interface Game {
   h: number
   cells: Cell[]
   settings: CaveSettings
-  rng: () => number
+  rngState: number // rastgele sayı üretecinin durumu (kopyalanabilir olsun diye sayı)
   nextId: number
   tick: number
   timeTicks: number
@@ -100,6 +100,25 @@ export function mulberry32(seed: number): () => number {
     t = Math.imul(t ^ (t >>> 15), t | 1)
     t ^= t + Math.imul(t ^ (t >>> 7), t | 61)
     return ((t ^ (t >>> 14)) >>> 0) / 4294967296
+  }
+}
+
+/** Oyunun rastgele sayısı: mulberry32 ile aynı dizi, durumu oyunun içinde tutulur. */
+export function rand(g: Game): number {
+  g.rngState = (g.rngState + 0x6d2b79f5) >>> 0
+  let t = g.rngState
+  t = Math.imul(t ^ (t >>> 15), t | 1)
+  t ^= t + Math.imul(t ^ (t >>> 7), t | 61)
+  return ((t ^ (t >>> 14)) >>> 0) / 4294967296
+}
+
+/** Oyunun bağımsız kopyası (çözücü ileriyi simüle ederken kullanır). */
+export function cloneGame(g: Game): Game {
+  return {
+    ...g,
+    cells: g.cells.map((c) => ({ ...c })),
+    player: { ...g.player },
+    events: [],
   }
 }
 
@@ -139,7 +158,7 @@ export function createGame(w: number, h: number, tiles: Tile[], settings: CaveSe
     h,
     cells: [],
     settings,
-    rng: mulberry32(settings.seed ?? 1),
+    rngState: (settings.seed ?? 1) >>> 0,
     nextId: 1,
     tick: 0,
     timeTicks: settings.time * TICKS_PER_SECOND,
@@ -274,7 +293,7 @@ function updatePlayer(g: Game, x: number, y: number, input: Input) {
       // Yatay itme: arkası boşsa ve taş düşmüyorsa, 1/4 olasılıkla
       if ((d === 1 || d === 3) && !target.falling) {
         const bx = nx + DX[d]
-        if (isEmpty(at(g, bx, ny)) && g.rng() < 0.25) {
+        if (isEmpty(at(g, bx, ny)) && rand(g) < 0.25) {
           move(g, nx, ny, bx, ny)
           g.events.push({ k: 'push', x: bx, y: ny })
           go = true
@@ -375,8 +394,8 @@ function updateAmoeba(g: Game, x: number, y: number, scan: AmoebaScan) {
   if (!free) return
   scan.canGrow = true
   const fast = g.tick >= (g.settings.amoebaTime ?? 30) * TICKS_PER_SECOND
-  if (g.rng() < (fast ? 0.25 : 0.03)) {
-    const d = Math.floor(g.rng() * 4)
+  if (rand(g) < (fast ? 0.25 : 0.03)) {
+    const d = Math.floor(rand(g) * 4)
     const n = at(g, x + DX[d], y + DY[d])
     if (n.t === T.SPACE || n.t === T.DIRT) spawn(g, x + DX[d], y + DY[d], T.AMOEBA)
   }

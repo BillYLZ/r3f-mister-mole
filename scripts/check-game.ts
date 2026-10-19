@@ -1,7 +1,8 @@
 // Oyun motoru için davranış testleri: node --experimental-strip-types scripts/check-game.ts
-import { T, createGame, step, tilesFromRows, at, countTiles, type CaveSettings, type Game, type Input } from '../src/engine.ts'
+import { T, cloneGame, createGame, step, tilesFromRows, at, countTiles, type CaveSettings, type Game, type Input } from '../src/engine.ts'
 import { CAVES, W, H, buildCave, caveSeed, diamondPotential } from '../src/levels.ts'
 import { findBarRuns } from '../src/v3/bricks.ts'
+import { solve } from '../src/solver.ts'
 
 let failed = 0
 function check(name: string, ok: boolean, info = '') {
@@ -235,6 +236,24 @@ for (const cave of CAVES) {
     maxPlayers = Math.max(maxPlayers, countTiles(g, T.PLAYER))
   }
   check(`  rastgele 2000 tick: en fazla bir oyuncu`, maxPlayers <= 1)
+}
+
+// Çözücü: her varsayılan mağara çözülmeli ve çözüm aynen oynatılınca kazanılmalı
+for (const cave of CAVES) {
+  const g = createGame(W, H, buildCave(cave), cave)
+  const sol = solve(g, { maxMs: 20000 })
+  const replay = cloneGame(g)
+  for (const inp of sol.inputs) step(replay, inp)
+  check(`çözücü: "${cave.name}"`, sol.ok && replay.status === 'won', `${sol.inputs.length} tick, ${sol.ms} ms${sol.reason ? ', ' + sol.reason : ''}`)
+}
+{
+  // Oyunun ortasından da çözebilmeli: birkaç hamle oynanmış 1. mağara
+  const g = createGame(W, H, buildCave(CAVES[0]), CAVES[0])
+  for (let i = 0; i < 25; i++) step(g, { dir: i < 20 ? -1 : 1, snap: false })
+  const sol = solve(g, { maxMs: 20000 })
+  const replay = cloneGame(g)
+  for (const inp of sol.inputs) step(replay, inp)
+  check('çözücü: oyunun ortasından', sol.ok && replay.status === 'won')
 }
 
 if (failed) {
