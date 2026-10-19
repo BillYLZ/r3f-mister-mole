@@ -185,8 +185,41 @@ export const CAVES: Cave[] = [
   },
 ]
 
-export function buildCave(cave: Cave): Tile[] {
-  const rng = mulberry32(cave.seed ?? 1)
+/** Kullanıcının girebileceği en büyük harita tohumu. */
+export const SEED_MAX = 999_999_999
+
+/**
+ * Mağaranın harita tohumu. Kullanıcı tohumu yoksa mağaranın kendi (varsayılan)
+ * tohumu; varsa kullanıcı tohumu ve mağara sırasından türetilen sayı. Böylece
+ * aynı kullanıcı tohumu her mağarada farklı ama her seferinde aynı harita verir.
+ */
+export function caveSeed(level: number, userSeed: number | null): number {
+  if (userSeed === null) return CAVES[level].seed ?? 1
+  let h = (Math.imul(userSeed ^ 0x9e3779b9, 0x85ebca6b) + Math.imul(level + 1, 0xc2b2ae35)) >>> 0
+  h = Math.imul(h ^ (h >>> 13), 0x27d4eb2d) >>> 0
+  return (h ^ (h >>> 16)) >>> 0
+}
+
+/**
+ * Toplanabilecek elmas tahmini: mevcut elmaslar + kelebek başına 9 (ezilince)
+ * + amip varsa 40 (kapatılınca) + sihirli duvar varsa 30 (taş dönüşümü).
+ */
+export function diamondPotential(tiles: Tile[]): number {
+  let d = 0
+  let b = 0
+  let amoeba = false
+  let magic = false
+  for (const t of tiles) {
+    if (t === T.DIAMOND) d++
+    else if (t === T.BUTTERFLY) b++
+    else if (t === T.AMOEBA) amoeba = true
+    else if (t === T.MAGIC) magic = true
+  }
+  return d + 9 * b + (amoeba ? 40 : 0) + (magic ? 30 : 0)
+}
+
+export function buildCave(cave: Cave, seed = cave.seed ?? 1): Tile[] {
+  const rng = mulberry32(seed)
   const tiles: Tile[] = new Array(W * H).fill(T.DIRT)
   const put = (x: number, y: number, t: Tile) => {
     if (x > 0 && y > 0 && x < W - 1 && y < H - 1) tiles[y * W + x] = t
@@ -227,5 +260,16 @@ export function buildCave(cave: Cave): Tile[] {
   }
   const [ex, ey] = cave.exit
   tiles[ey * W + ex] = T.EXIT
+  // Başka bir tohum yeterli elmas vermezse eksikleri rastgele toprak hücrelere
+  // ekle (varsayılan mağaralarda gerek kalmaz, haritaları değişmez)
+  const want = Math.ceil(cave.needed * 1.25)
+  let have = diamondPotential(tiles)
+  for (let tries = 0; have < want && tries < 20000; tries++) {
+    const x = 1 + Math.floor(rng() * (W - 2))
+    const y = 1 + Math.floor(rng() * (H - 2))
+    if (tiles[y * W + x] !== T.DIRT || (Math.abs(x - sx) <= 1 && Math.abs(y - sy) <= 1)) continue
+    tiles[y * W + x] = T.DIAMOND
+    have++
+  }
   return tiles
 }

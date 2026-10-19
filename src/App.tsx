@@ -7,7 +7,7 @@ import { Scene } from './Scene.tsx'
 import { SceneV2 } from './v2/SceneV2.tsx'
 import { SceneV3 } from './v3/SceneV3.tsx'
 import { useGame, LIVES } from './store.ts'
-import { CAVES } from './levels.ts'
+import { CAVES, SEED_MAX } from './levels.ts'
 import { keyDir, press, release, setSnap, clearInput } from './input.ts'
 import { setMuted, unlockAudio } from './sfx.ts'
 
@@ -20,6 +20,8 @@ export default function App() {
 
   useEffect(() => {
     const down = (e: KeyboardEvent) => {
+      // Tohum kutusuna yazarken oyun kısayolları çalışmasın (Enter hariç)
+      if (e.target instanceof HTMLInputElement && e.code !== 'Enter') return
       unlockAudio()
       const st = useGame.getState()
       const d = keyDir(e.code)
@@ -169,6 +171,7 @@ function Overlay() {
   const lives = useGame((s) => s.lives)
   const paused = useGame((s) => s.paused)
   const start = useGame((s) => s.start)
+  const seed = useGame((s) => s.seed)
 
   if (screen === 'playing' && !paused) return null
   const cont = (label: string) => (
@@ -187,6 +190,7 @@ function Overlay() {
             </h1>
             <p className="bd-sub">Klasik bir maden oyununa modern bir 3B yorum</p>
             <VersionPicker />
+            <SeedPicker />
             {cont('Oyna')}
             <div className="bd-levels">
               {CAVES.map((c, i) => (
@@ -202,6 +206,7 @@ function Overlay() {
         {screen === 'playing' && paused && (
           <>
             <h2>Duraklatıldı</h2>
+            <p className="bd-dim">Harita tohumu: {seed === null ? 'varsayılan' : seed}</p>
             {cont('Devam')}
             <div className="bd-row">
               <button className="bd-secondary" onClick={restartCave}>
@@ -364,4 +369,37 @@ function DangerEdge() {
   const time = useGame((s) => s.hud.time)
   const on = screen === 'playing' && time > 0 && time <= 10
   return <div className={`bd-danger ${on ? 'on' : ''}`} />
+}
+
+/**
+ * Harita tohumu: boşsa her mağara varsayılan haritasını kullanır. Bir sayı
+ * girilirse tüm mağaralar o sayıdan türetilen yeni (ama her seferinde aynı)
+ * haritalarla oynanır.
+ */
+function SeedPicker() {
+  const seed = useGame((s) => s.seed)
+  const setSeed = useGame((s) => s.setSeed)
+  const onText = (v: string) => {
+    const digits = v.replace(/\D/g, '').slice(0, String(SEED_MAX).length)
+    setSeed(digits === '' ? null : Math.min(Number(digits), SEED_MAX))
+  }
+  return (
+    <div className="bd-seed">
+      <label htmlFor="bd-seed-input">Harita tohumu</label>
+      <input
+        id="bd-seed-input"
+        inputMode="numeric"
+        autoComplete="off"
+        placeholder="varsayılan"
+        value={seed === null ? '' : String(seed)}
+        onChange={(e) => onText(e.target.value)}
+      />
+      <button title="Rastgele tohum" onClick={() => setSeed(Math.floor(Math.random() * 1_000_000))}>
+        🎲
+      </button>
+      <button title="Varsayılan haritalara dön" disabled={seed === null} onClick={() => setSeed(null)}>
+        Varsayılan
+      </button>
+    </div>
+  )
 }

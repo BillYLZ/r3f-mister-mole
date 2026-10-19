@@ -35,6 +35,16 @@ Ana menüden üç görünüm arasında seçim yapılır; seçim tarayıcıda hat
 - **Mağaralar** (`src/levels.ts`): klasik oyunlardaki gibi tohumlu rastgele dolgu üzerine çizim komutlarıyla üretilen 6 mağara.
 - **Görünüm**: instanced mesh'ler, iki tick arasında yumuşak hareket, gölgeler, bloom, parçacıklar, kafa lambalı madenci, kamera takibi ve sarsıntı. Sesler Web Audio ile sentezlenir. Dokunmatik ekranlar için yön tuşları vardır.
 
+## Harita tohumu
+
+Mağaralar orijinal oyundaki gibi tohumlu rastgele dolgu ile üretilir: aynı tohum her seferinde aynı haritayı verir. Ana menüdeki **Harita tohumu** kutusu:
+
+- **Boş (varsayılan):** her mağara kendi tasarlanmış haritasıyla açılır.
+- **Bir sayı:** tüm mağaralar o sayıdan türetilen yeni haritalarla oynanır (her mağara farklı). Aynı sayıyı giren herkes aynı haritaları alır.
+- **🎲** rastgele bir tohum seçer, **Varsayılan** geri döner. Seçim tarayıcıda hatırlanır; duraklatma menüsünde o anki tohum görünür.
+
+Başka bir tohum yeterli elmas vermezse eksik elmaslar rastgele toprak hücrelere eklenir, böylece her harita bitirilebilir kalır.
+
 ## Kontroller
 
 | Tuş | İşlev |

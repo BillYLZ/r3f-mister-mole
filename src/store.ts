@@ -1,5 +1,5 @@
 import { create } from 'zustand'
-import { CAVES } from './levels.ts'
+import { CAVES, SEED_MAX } from './levels.ts'
 
 export type Screen = 'title' | 'playing' | 'dead' | 'timeout' | 'restart' | 'won' | 'gameover' | 'complete'
 
@@ -25,6 +25,7 @@ interface State {
   muted: boolean
   overview: boolean
   version: Version // 1: klasik, 2: modern karanlık mağara, 3: oyuncak tuğla
+  seed: number | null // harita tohumu; null = her mağaranın varsayılan tohumu
   hud: Hud
   setHud: (h: Hud) => void
   start: (level: number) => void
@@ -34,6 +35,18 @@ interface State {
   toTitle: () => void
   toggle: (k: 'paused' | 'muted' | 'overview') => void
   setVersion: (v: Version) => void
+  setSeed: (seed: number | null) => void
+}
+
+const readSeed = (): number | null => {
+  try {
+    const v = localStorage.getItem('mister-mole-seed')
+    if (v === null || v === '') return null
+    const n = Number(v)
+    return Number.isInteger(n) && n >= 0 && n <= SEED_MAX ? n : null
+  } catch {
+    return null
+  }
 }
 
 const readVersion = (): Version => {
@@ -66,6 +79,7 @@ export const useGame = create<State>((set, get) => ({
   muted: false,
   overview: false,
   version: readVersion(),
+  seed: readSeed(),
   hud: { diamonds: 0, needed: 0, value: 0, time: 0, score: 0, exitOpen: false },
   setHud: (hud) => set({ hud }),
   start: (level) => set((s) => ({ screen: 'playing', level, lives: LIVES, totalScore: 0, gameKey: s.gameKey + 1, paused: false })),
@@ -93,6 +107,16 @@ export const useGame = create<State>((set, get) => ({
       // depolama kapalıysa seçim yalnızca bu oturumda geçerli
     }
     set({ version })
+  },
+  setSeed: (seed) => {
+    try {
+      if (seed === null) localStorage.removeItem('mister-mole-seed')
+      else localStorage.setItem('mister-mole-seed', String(seed))
+    } catch {
+      // depolama kapalıysa seçim yalnızca bu oturumda geçerli
+    }
+    // arka plandaki tanıtım mağarası da yeni tohumla yeniden kurulsun
+    set((s) => ({ seed, gameKey: s.gameKey + 1 }))
   },
 }))
 

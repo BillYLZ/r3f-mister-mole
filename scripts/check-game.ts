@@ -1,6 +1,6 @@
 // Oyun motoru için davranış testleri: node --experimental-strip-types scripts/check-game.ts
 import { T, createGame, step, tilesFromRows, at, countTiles, type CaveSettings, type Game, type Input } from '../src/engine.ts'
-import { CAVES, W, H, buildCave } from '../src/levels.ts'
+import { CAVES, W, H, buildCave, caveSeed, diamondPotential } from '../src/levels.ts'
 import { findBarRuns } from '../src/v3/bricks.ts'
 
 let failed = 0
@@ -177,6 +177,32 @@ const run = (g: Game, n: number, input = NONE) => {
   }
 }
 
+// Harita tohumu: varsayılan = mağaranın kendi tohumu; kullanıcı tohumu her
+// mağarada farklı ama tekrarlanabilir harita verir ve her harita oynanabilir kalır
+{
+  check('tohum yoksa varsayılan tohum kullanılır', CAVES.every((c, i) => caveSeed(i, null) === c.seed))
+  const a = buildCave(CAVES[0], caveSeed(0, 12345)).join()
+  check('aynı tohum hep aynı haritayı verir', a === buildCave(CAVES[0], caveSeed(0, 12345)).join())
+  check('farklı tohum farklı harita verir', a !== buildCave(CAVES[0], caveSeed(0, 12346)).join())
+  check('aynı tohum her mağarada farklı tohuma döner', new Set(CAVES.map((_, i) => caveSeed(i, 42))).size === CAVES.length)
+  let bad = ''
+  for (let k = 0; k < 300 && !bad; k++) {
+    const user = Math.floor(Math.random() * 1_000_000_000)
+    CAVES.forEach((cave, i) => {
+      const tiles = buildCave(cave, caveSeed(i, user))
+      const count = (t: number) => tiles.filter((x) => x === t).length
+      const border = tiles.every((t, j) => {
+        const x = j % W
+        const y = Math.floor(j / W)
+        return x > 0 && y > 0 && x < W - 1 && y < H - 1 ? true : t === T.STEEL || t === T.EXIT
+      })
+      if (!border || count(T.INBOX) !== 1 || count(T.EXIT) !== 1 || diamondPotential(tiles) < cave.needed)
+        bad = `tohum ${user}, mağara "${cave.name}"`
+    })
+  }
+  check('300 rastgele tohumda tüm mağaralar oynanabilir', !bad, bad)
+}
+
 // Seviyeler: boyut, kenarlar, giriş/çıkış, yeterli elmas potansiyeli, rastgele oyunla çökme yok
 for (const cave of CAVES) {
   const tiles = buildCave(cave)
@@ -186,7 +212,7 @@ for (const cave of CAVES) {
     return x > 0 && y > 0 && x < W - 1 && y < H - 1 ? true : t === T.STEEL || t === T.EXIT
   })
   const count = (t: number) => tiles.filter((x) => x === t).length
-  const potential = count(T.DIAMOND) + 9 * count(T.BUTTERFLY) + (count(T.AMOEBA) ? 40 : 0) + (count(T.MAGIC) ? 30 : 0)
+  const potential = diamondPotential(tiles)
   check(
     `mağara "${cave.name}"`,
     tiles.length === W * H && border && count(T.INBOX) === 1 && count(T.EXIT) === 1 && potential >= cave.needed,

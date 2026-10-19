@@ -374,3 +374,45 @@ kbd {
 .bd-secondary:hover {
   background: rgba(255, 200, 120, 0.15);
 }
+
+/* Harita tohumu satırı */
+.bd-seed {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 0 0 14px;
+  font-size: 13px;
+  color: var(--dim);
+}
+.bd-seed input {
+  font: inherit;
+  font-size: 15px;
+  width: 9.5em;
+  padding: 6px 8px;
+  color: var(--fg);
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  text-align: center;
+  user-select: text;
+  -webkit-user-select: text;
+}
+.bd-seed input::placeholder {
+  color: var(--dim);
+}
+.bd-seed button {
+  font: inherit;
+  font-size: 14px;
+  color: var(--fg);
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  padding: 6px 10px;
+  cursor: pointer;
+}
+.bd-seed button:disabled {
+  opacity: 0.4;
+  cursor: default;
+}

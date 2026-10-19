@@ -9,7 +9,7 @@ import { RoundedBoxGeometry } from 'three/examples/jsm/geometries/RoundedBoxGeom
 import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js'
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js'
 import { DX, T, TICKS_PER_SECOND, createGame, step, timeLeft, type Game, type GameEvent, type Input } from '../engine.ts'
-import { CAVES, W, H, buildCave } from '../levels.ts'
+import { CAVES, W, H, buildCave, caveSeed } from '../levels.ts'
 import { useGame } from '../store.ts'
 import { clearInput, takeInput } from '../input.ts'
 import { sfx } from '../sfx.ts'
@@ -28,7 +28,8 @@ const DUST = 700
 
 function newGame(level: number): Game {
   const cave = CAVES[level]
-  return createGame(W, H, buildCave(cave), cave)
+  const seed = caveSeed(level, useGame.getState().seed)
+  return createGame(W, H, buildCave(cave, seed), { ...cave, seed })
 }
 
 function hash(i: number) {
