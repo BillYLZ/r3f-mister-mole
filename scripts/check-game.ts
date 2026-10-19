@@ -238,14 +238,22 @@ for (const cave of CAVES) {
   check(`  rastgele 2000 tick: en fazla bir oyuncu`, maxPlayers <= 1)
 }
 
-// Çözücü: her varsayılan mağara çözülmeli ve çözüm aynen oynatılınca kazanılmalı
-for (const cave of CAVES) {
+// Çözücü: varsayılan mağaralar çözülmeli ve çözüm aynen oynatılınca kazanmalı.
+// 5. mağara (Sihirli Duvar) orijinal haliyle çözümsüz: çözücü bunu söylemeli.
+CAVES.forEach((cave, i) => {
   const g = createGame(W, H, buildCave(cave), cave)
-  const sol = solve(g, { maxMs: 20000 })
+  const solvable = i !== 4
+  const sol = solve(g, { maxMs: solvable ? 20000 : 3000 })
   const replay = cloneGame(g)
   for (const inp of sol.inputs) step(replay, inp)
-  check(`çözücü: "${cave.name}"`, sol.ok && replay.status === 'won', `${sol.inputs.length} tick, ${sol.ms} ms${sol.reason ? ', ' + sol.reason : ''}`)
-}
+  const info = `${sol.inputs.length} tick, ${replay.diamonds} elmas, ${sol.ms} ms${sol.reason ? ', ' + sol.reason : ''}`
+  if (solvable) check(`çözücü: "${cave.name}"`, sol.ok && replay.status === 'won', info)
+  else check(`çözücü: "${cave.name}" çözümsüz, düzgünce bildirir`, !sol.ok && !sol.inputs.length && !!sol.reason, info)
+  if (i === 0) {
+    const onMap = g.cells.filter((c) => c.t === T.DIAMOND).length
+    check('çözücü: 1. mağarada bütün elmaslar toplanır', sol.allGems && replay.diamonds === onMap, `${replay.diamonds}/${onMap}`)
+  }
+})
 {
   // Oyunun ortasından da çözebilmeli: birkaç hamle oynanmış 1. mağara
   const g = createGame(W, H, buildCave(CAVES[0]), CAVES[0])

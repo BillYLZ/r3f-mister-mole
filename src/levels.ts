@@ -151,8 +151,6 @@ export const CAVES: Cave[] = [
       hline(T.WALL, 1, 11, 38),
       hline(T.MAGIC, 8, 11, 24),
       pt(T.DIRT, 2, 11), // aşağı inmek için geçit
-      vline(T.DIRT, 2, 8, 3), // geçidin üstü toprak: rastgele bir taş girişi tıkamasın
-      { k: 'rect', t: T.DIRT, x: 34, y: 17, w: 5, h: 4 }, // çıkışın çevresi taşla kapanmasın
       { k: 'rect', t: T.SPACE, x: 1, y: 12, w: 38, h: 4, fill: T.SPACE },
       hline(T.WALL, 1, 16, 38),
       hline(T.SPACE, 4, 16, 1),

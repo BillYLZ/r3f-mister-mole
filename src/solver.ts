@@ -14,6 +14,7 @@ export interface Solution {
   inputs: Input[] // tick başına girdi
   path: number[] // her tick sonunda oyuncunun hücresi (çizim için)
   reason?: string
+  allGems: boolean // mağaradaki bütün elmaslar toplandı mı
   ms: number
   nodes: number
 }
@@ -29,6 +30,7 @@ interface Ctx {
   nodes: number
   failed: Set<string>
   best: number // aramada ulaşılan en çok elmas (tanı için)
+  all: boolean // true: çıkışa ancak mağarada hiç elmas kalmayınca gidilir
 }
 
 interface Plan {
@@ -236,8 +238,10 @@ function candidates(c: Ctx, g: Game): Candidate[] {
   const list: Candidate[] = []
   const reachable = (i: number) => dist[i] >= 0
   const exit = g.cells.findIndex((cell) => cell.t === T.EXIT)
-  const exitBlocked = g.exitOpen && !(exit >= 0 && reachable(exit))
-  if (g.exitOpen && !exitBlocked) list.push({ run: () => walk(c, g, exit, (s) => s.status === 'won') })
+  // "Hepsini topla" modunda çıkış, mağarada elmas kalmayınca hedef olur
+  const exitAllowed = g.exitOpen && (!c.all || diamondTiles(g) === 0)
+  const exitBlocked = exitAllowed && !(exit >= 0 && reachable(exit))
+  if (exitAllowed && !exitBlocked) list.push({ run: () => walk(c, g, exit, (s) => s.status === 'won') })
   const gems: number[] = []
   g.cells.forEach((cell, i) => {
     if (cell.t === T.DIAMOND && reachable(i)) gems.push(i)
@@ -346,9 +350,23 @@ function dfs(c: Ctx, g: Game, depth: number): Input[] | null {
   return null
 }
 
-/** Verilen andan itibaren mağarayı çözmeye çalışır. Oyun nesnesi değişmez. */
-export function solve(game: Game, opts: { maxMs?: number } = {}): Solution {
-  const c: Ctx = { t0: now(), maxMs: opts.maxMs ?? 8000, nodes: 0, failed: new Set(), best: 0 }
+/**
+ * Verilen andan itibaren mağarayı çözmeye çalışır. Oyun nesnesi değişmez.
+ * Önce mağaradaki bütün elmasları toplayıp çıkan bir çözüm aranır (sürenin
+ * çoğu buna ayrılır); bulunamazsa yeterli elmasla çıkan çözüm aranır.
+ */
+export function solve(game: Game, opts: { maxMs?: number; all?: boolean } = {}): Solution {
+  const maxMs = opts.maxMs ?? 8000
+  const t0 = now()
+  if (opts.all === false) return attempt(game, maxMs, false, t0)
+  const full = attempt(game, maxMs * 0.6, true, t0)
+  if (full.ok) return full
+  const rest = attempt(game, Math.max(500, maxMs - (now() - t0)), false, t0)
+  return { ...rest, nodes: rest.nodes + full.nodes }
+}
+
+function attempt(game: Game, maxMs: number, all: boolean, start: number): Solution {
+  const c: Ctx = { t0: now(), maxMs, nodes: 0, failed: new Set(), best: 0, all }
   const result = (okk: boolean, inputs: Input[], reason?: string): Solution => {
     const path: number[] = []
     const g = cloneGame(game)
@@ -356,7 +374,7 @@ export function solve(game: Game, opts: { maxMs?: number } = {}): Solution {
       step(g, inp)
       path.push(g.player.y * g.w + g.player.x)
     }
-    return { ok: okk, inputs, path, reason, ms: Math.round(now() - c.t0), nodes: c.nodes }
+    return { ok: okk, inputs, path, reason, allGems: okk && all, ms: Math.round(now() - start), nodes: c.nodes }
   }
   if (game.status !== 'playing') return result(false, [], 'Oyun bitmiş')
   try {

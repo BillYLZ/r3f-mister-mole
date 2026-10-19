@@ -41,7 +41,18 @@ Sağ üstteki **💡 Çözüm** düğmesi (kısayol **H**) üç sürümde de ça
 
 Çözücü (`src/solver.ts`) oyunun kopyasını motorla adım adım ileri simüle eder; motor belirlenimci olduğu için bulunan hamleler gerçek oyunda aynen oynanınca aynı sonucu verir. Aranan hamleler: en yakın elmasa en kısa yoldan gitmek (her adım simüle edilir, ölümle biten adımlar elenir), taş itmek, altındaki toprağı yandan kazarak taş düşürmek (kelebek ezmek ya da sihirli duvardan elmas elde etmek için) ve tıkanan yolları açmak için keşif. Çıkmaz sokakta geri dönülür. Arama ayrı bir iş parçacığında (Web Worker) çalışır, en fazla 10 saniye sürer.
 
-Testler 6 varsayılan mağaranın hepsinin çözüldüğünü ve çözümün tekrar oynatılınca kazandığını doğrular. Başka harita tohumlarında çözücü her zaman çözüm bulamayabilir; bulamazsa bunu söyler.
+Çözücü önce mağaradaki **bütün elmasları** toplayıp çıkan bir çözüm arar; bulamazsa kapıyı açacak kadar elmasla çıkan çözümü arar. Varsayılan mağaralarda:
+
+| Mağara | Sonuç |
+|---|---|
+| 1. İlk Kazı | çözülür, 37 elmasın hepsi toplanır |
+| 2. Ateşböceği Tünelleri | çözülür, gereken kadar elmasla |
+| 3. Kelebek Bahçesi | çözülür, bütün elmaslar |
+| 4. Yeşil Tehdit | çözülür, bütün elmaslar |
+| 5. Sihirli Duvar | çözüm bulunamaz (mağara bu haliyle çözümsüz) |
+| 6. Çığ | çözülür |
+
+Testler bunu ve çözümlerin tekrar oynatılınca kazandığını doğrular. Başka harita tohumlarında çözücü her zaman çözüm bulamayabilir; bulamazsa bunu söyler.
 
 ## Harita tohumu
 
