@@ -164,7 +164,7 @@ export function createGame(w: number, h: number, tiles: Tile[], settings: CaveSe
     timeTicks: settings.time * TICKS_PER_SECOND,
     diamonds: 0,
     score: 0,
-    exitOpen: settings.needed <= 0,
+    exitOpen: false, // ilk tick sonunda koşul sağlanıyorsa açılır
     status: 'playing',
     magic: 'dormant',
     magicTicks: (settings.magicTime ?? 20) * TICKS_PER_SECOND,
@@ -251,10 +251,23 @@ function collect(g: Game, x: number, y: number) {
   g.diamonds++
   g.score += g.exitOpen ? g.settings.extra : g.settings.value
   g.events.push({ k: 'collect', x, y })
-  if (!g.exitOpen && g.diamonds >= g.settings.needed) {
-    g.exitOpen = true
-    g.events.push({ k: 'exitOpen' })
-  }
+}
+
+/** Haritada kalan elmaslar (elmasa dönüşecek patlamalar dahil). */
+export function diamondsLeft(g: Game): number {
+  let n = 0
+  for (const c of g.cells) if (c.t === T.DIAMOND || (c.t === T.EXPLODE && c.toDiamond)) n++
+  return n
+}
+
+/**
+ * Kural: çıkış, mağaradaki bütün elmaslar toplanınca açılır (haritada elmas
+ * kalmayınca ve en az mağaranın gerekli sayısı kadar toplanmışsa).
+ */
+function checkExit(g: Game) {
+  if (g.exitOpen || g.diamonds < g.settings.needed || diamondsLeft(g) > 0) return
+  g.exitOpen = true
+  g.events.push({ k: 'exitOpen' })
 }
 
 function updatePlayer(g: Game, x: number, y: number, input: Input) {
@@ -447,6 +460,7 @@ export function step(g: Game, input: Input): GameEvent[] {
   }
 
   if (g.magic === 'active' && --g.magicTicks <= 0) g.magic = 'expired'
+  checkExit(g)
 
   if (g.status === 'playing' && g.player.spawned) {
     if (--g.timeTicks <= 0) {

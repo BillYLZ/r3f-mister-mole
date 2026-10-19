@@ -7,7 +7,7 @@
 // yeniden hesaplanan en kısa yoldan yürünür; her adım simüle edilip ölümle
 // biten adımlar elenir. Çıkmaz sokakta geri dönülür, aynı durum ikinci kez
 // denenmez.
-import { DX, DY, T, at, cloneGame, step, type Game, type Input, type Tile } from './engine.ts'
+import { DX, DY, T, at, cloneGame, mulberry32, step, type Game, type Input, type Tile } from './engine.ts'
 
 export interface Solution {
   ok: boolean
@@ -30,7 +30,8 @@ interface Ctx {
   nodes: number
   failed: Set<string>
   best: number // aramada ulaşılan en çok elmas (tanı için)
-  all: boolean // true: çıkışa ancak mağarada hiç elmas kalmayınca gidilir
+  width: number // her düğümde denenecek elmas hedefi sayısı
+  rnd: (() => number) | null // elmas sırasını hafifçe karıştırmak için (null: karıştırma)
 }
 
 interface Plan {
@@ -139,13 +140,16 @@ function walk(c: Ctx, g0: Game, target: number, done: Done, maxTicks = 220): Pla
   let waits = 0
   for (let k = 0; k < maxTicks; k++) {
     if (done(g)) return inputs.length || g.status === 'won' ? { g, inputs } : null
-    const options = [...firstSteps(g, target).map((d) => MOVE[d]), NONE]
+    // Önce hedefe giden adımlar, sonra bekleme, en son kaçış (diğer yönler):
+    // örneğin yolu kesen bir ateşböceğinden uzaklaşıp geçmesini beklemek için
+    const first = firstSteps(g, target)
+    const options = [...first.map((d) => MOVE[d]), NONE, ...MOVE.filter((m) => !first.includes(m.dir))]
     let moved = false
     for (const inp of options) {
       const t = cloneGame(g)
       tick(c, t, inp)
       if (!survives(c, t)) continue
-      if (inp.dir < 0 && ++waits > 10) return null
+      if (!first.includes(inp.dir) && ++waits > 24) return null
       g = t
       inputs.push(inp)
       moved = true
@@ -155,6 +159,16 @@ function walk(c: Ctx, g0: Game, target: number, done: Done, maxTicks = 220): Pla
     if (g.status === 'won') return { g, inputs }
   }
   return null
+}
+
+/** Oyuncunun şu an yol bulabildiği elmaslar. */
+function reachableGems(g: Game): number {
+  const dist = bfs(g)
+  let n = 0
+  g.cells.forEach((cell, i) => {
+    if (cell.t === T.DIAMOND && dist[i] >= 0) n++
+  })
+  return n
 }
 
 /** Ortaya çıkmış ve çıkacak elmaslar (kelebek patlamaları dahil). */
@@ -169,7 +183,7 @@ function diamondTiles(g: Game): number {
  * ezer ya da sihirli duvardan geçip elmasa dönüşürse elmas sayısı artar.
  * Kelebeğin konumu zamana bağlı olduğu için birkaç bekleme süresi denenir.
  */
-function drop(c: Ctx, g0: Game, dirt: number, stand: number): Plan | null {
+function drop(c: Ctx, g0: Game, dirt: number, stand: number, unbury: boolean): Plan | null {
   let base: Plan | null = null
   if (g0.player.y * g0.w + g0.player.x === stand) base = { g: g0, inputs: [] }
   else base = walk(c, g0, stand, (g) => g.player.y * g.w + g.player.x === stand)
@@ -177,6 +191,7 @@ function drop(c: Ctx, g0: Game, dirt: number, stand: number): Plan | null {
   const dx = (dirt % g0.w) - (stand % g0.w)
   const snap: Input = { dir: dx > 0 ? 1 : 3, snap: true }
   const before = diamondTiles(base.g)
+  const reachBefore = unbury ? reachableGems(base.g) : 0
   for (let wait = 0; wait < 8; wait++) {
     const g = cloneGame(base.g)
     const inputs = [...base.inputs]
@@ -194,7 +209,8 @@ function drop(c: Ctx, g0: Game, dirt: number, stand: number): Plan | null {
       inputs.push(NONE)
       alive = survives(c, g)
     }
-    if (alive && diamondTiles(g) > before) return { g, inputs }
+    // Başarı: yeni elmas çıktı ya da gömülü bir elmasa yol açıldı
+    if (alive && (diamondTiles(g) > before || (unbury && reachableGems(g) > reachBefore))) return { g, inputs }
   }
   return null
 }
@@ -238,17 +254,20 @@ function candidates(c: Ctx, g: Game): Candidate[] {
   const list: Candidate[] = []
   const reachable = (i: number) => dist[i] >= 0
   const exit = g.cells.findIndex((cell) => cell.t === T.EXIT)
-  // "Hepsini topla" modunda çıkış, mağarada elmas kalmayınca hedef olur
-  const exitAllowed = g.exitOpen && (!c.all || diamondTiles(g) === 0)
+  // Kural gereği çıkış ancak bütün elmaslar toplanınca açılır
+  const exitAllowed = g.exitOpen
   const exitBlocked = exitAllowed && !(exit >= 0 && reachable(exit))
   if (exitAllowed && !exitBlocked) list.push({ run: () => walk(c, g, exit, (s) => s.status === 'won') })
   const gems: number[] = []
   g.cells.forEach((cell, i) => {
     if (cell.t === T.DIAMOND && reachable(i)) gems.push(i)
   })
-  gems.sort((a, b) => dist[a] - dist[b])
+  // En yakından uzağa; karıştırmalı denemelerde yakın olanların sırası biraz oynatılır
+  const jitter = new Map<number, number>()
+  for (const i of gems) jitter.set(i, dist[i] + (c.rnd ? c.rnd() * 6 : 0))
+  gems.sort((a, b) => jitter.get(a)! - jitter.get(b)!)
   const startD = g.diamonds
-  for (const i of gems.slice(0, 5)) list.push({ run: () => walk(c, g, i, (s) => s.diamonds > startD) })
+  for (const i of gems.slice(0, c.width)) list.push({ run: () => walk(c, g, i, (s) => s.diamonds > startD) })
   if (!g.exitOpen) {
     // taş düşürme noktaları: üstünde duran taş olan toprak, yanında durulacak yer
     const drops: [number, number, number][] = []
@@ -274,13 +293,24 @@ function candidates(c: Ctx, g: Game): Candidate[] {
         for (let dx = -2; dx <= 2; dx++) if (at(g, x + dx, yy).t === T.BUTTERFLY) return true
       return false
     }
-    drops.sort((a, b) => Number(useful(b[0])) - Number(useful(a[0])) || a[2] - b[2])
+    // Ulaşılamayan (gömülü) elmas varsa, onlara yakın düşürmeler öne alınır
+    const buried: number[] = []
+    g.cells.forEach((cell, i) => {
+      if (cell.t === T.DIAMOND && !reachable(i)) buried.push(i)
+    })
+    const nearBuried = (i: number) => {
+      let best = 999
+      for (const b of buried) best = Math.min(best, Math.abs((b % g.w) - (i % g.w)) + Math.abs(Math.floor(b / g.w) - Math.floor(i / g.w)))
+      return best
+    }
+    const near = (d: [number, number, number]) => (gems.length === 0 && buried.length ? nearBuried(d[0]) : 0)
+    drops.sort((a, b) => Number(useful(b[0])) - Number(useful(a[0])) || near(a) - near(b) || a[2] - b[2])
     // Mağaradaki elmaslar yetmiyorsa işe yarayan düşürmeler elmas toplamadan önce
     // denenir (sihirli duvarın süresi ilk taşla başlar, beklemeye gelmez)
     let onMap = 0
     for (const cell of g.cells) if (cell.t === T.DIAMOND) onMap++
     const short = g.diamonds + onMap < g.settings.needed
-    const dropCands = drops.slice(0, 6).map(([dirt, stand]) => ({ run: () => drop(c, g, dirt, stand), useful: useful(dirt) }))
+    const dropCands = drops.slice(0, 6).map(([dirt, stand]) => ({ run: () => drop(c, g, dirt, stand, gems.length === 0), useful: useful(dirt) }))
     if (short) list.splice(g.exitOpen ? 1 : 0, 0, ...dropCands.filter((d) => d.useful))
     list.push(...dropCands.filter((d) => !short || !d.useful))
   }
@@ -327,10 +357,19 @@ function candidates(c: Ctx, g: Game): Candidate[] {
   return list
 }
 
-/** Durumun kısa özeti: aynı durumu ikinci kez aramamak için. */
+/**
+ * Durumun kısa özeti: aynı durumu ikinci kez aramamak için. Kazılmış toprak ve
+ * düşmanların anlık yeri dikkate alınmaz; yalnızca taşlar, elmaslar, duvarlar,
+ * karakter ve toplanan elmas sayısı. Böylece aynı elmasları farklı sırayla
+ * toplayıp aynı yere varan yollar tek kez denenir.
+ */
 function key(g: Game): string {
   let h = 2166136261
-  for (const cell of g.cells) h = Math.imul(h ^ cell.t, 16777619)
+  for (let i = 0; i < g.cells.length; i++) {
+    const t = g.cells[i].t
+    if (t === T.DIRT || t === T.SPACE || t === T.FIREFLY || t === T.BUTTERFLY) continue
+    h = Math.imul(h ^ (i * 31 + t), 16777619)
+  }
   return `${g.player.x},${g.player.y},${g.diamonds},${h >>> 0}`
 }
 
@@ -352,30 +391,50 @@ function dfs(c: Ctx, g: Game, depth: number): Input[] | null {
 
 /**
  * Verilen andan itibaren mağarayı çözmeye çalışır. Oyun nesnesi değişmez.
- * Önce mağaradaki bütün elmasları toplayıp çıkan bir çözüm aranır (sürenin
- * çoğu buna ayrılır); bulunamazsa yeterli elmasla çıkan çözüm aranır.
+ * Kural gereği çözüm mağaradaki bütün elmasları toplar.
+ *
+ * Tekrarlı dar arama: önce her düğümde yalnızca en yakın elmas denenir (hızlı,
+ * çoğu mağarayı çözer); olmazsa elmas sırası hafifçe karıştırılarak ve sonra
+ * daha çok seçenekle yeniden denenir. Her deneme kısa süreyle sınırlıdır, böylece
+ * tek bir kötü dal bütün süreyi tüketemez.
  */
-export function solve(game: Game, opts: { maxMs?: number; all?: boolean } = {}): Solution {
+export function solve(game: Game, opts: { maxMs?: number } = {}): Solution {
   const maxMs = opts.maxMs ?? 8000
   const t0 = now()
-  if (opts.all === false) return attempt(game, maxMs, false, t0)
-  const full = attempt(game, maxMs * 0.6, true, t0)
-  if (full.ok) return full
-  const rest = attempt(game, Math.max(500, maxMs - (now() - t0)), false, t0)
-  return { ...rest, nodes: rest.nodes + full.nodes }
+  // [genişlik, karıştırma tohumu, süre payı]
+  const schedule: [number, number, number][] = [
+    [1, 0, 0.08], [5, 0, 0.4], [1, 1, 0.08], [2, 0, 0.15], [1, 2, 0.08], [3, 0, 0.2], [1, 3, 0.08], [5, 1, 0.3], [2, 1, 0.15],
+  ]
+  let nodes = 0
+  let best = 0
+  let reason = ''
+  for (let k = 0; ; k++) {
+    const left = maxMs - (now() - t0)
+    if (left < 150) break
+    const [width, seed, share] = k < schedule.length ? schedule[k] : [1 + (k % 5), k, 0.15]
+    const r = attempt(game, Math.min(left, Math.max(400, maxMs * share)), width, seed, t0)
+    nodes += r.nodes
+    best = Math.max(best, r.best)
+    if (r.ok) return { ...r, nodes }
+    reason = r.reason ?? ''
+    if (reason === 'Oyun bitmiş') break
+  }
+  const sol = attempt(game, 0, 1, 0, t0, true)
+  return { ...sol, nodes, reason: reason === 'Oyun bitmiş' ? reason : `Çözüm bulunamadı (en çok ${best} elmas toplanabildi)` }
 }
 
-function attempt(game: Game, maxMs: number, all: boolean, start: number): Solution {
-  const c: Ctx = { t0: now(), maxMs, nodes: 0, failed: new Set(), best: 0, all }
-  const result = (okk: boolean, inputs: Input[], reason?: string): Solution => {
+function attempt(game: Game, maxMs: number, width: number, seed: number, start: number, empty = false): Solution & { best: number } {
+  const c: Ctx = { t0: now(), maxMs, nodes: 0, failed: new Set(), best: 0, width, rnd: seed ? mulberry32(seed * 7919) : null }
+  const result = (okk: boolean, inputs: Input[], reason?: string) => {
     const path: number[] = []
     const g = cloneGame(game)
     for (const inp of inputs) {
       step(g, inp)
       path.push(g.player.y * g.w + g.player.x)
     }
-    return { ok: okk, inputs, path, reason, allGems: okk && all, ms: Math.round(now() - start), nodes: c.nodes }
+    return { ok: okk, inputs, path, reason, allGems: okk, ms: Math.round(now() - start), nodes: c.nodes, best: c.best }
   }
+  if (empty) return result(false, [])
   if (game.status !== 'playing') return result(false, [], 'Oyun bitmiş')
   try {
     // Oyuncu henüz girişten çıkmadıysa bekle
@@ -387,9 +446,10 @@ function attempt(game: Game, maxMs: number, all: boolean, start: number): Soluti
     }
     const rest = dfs(c, g, 0)
     if (rest) return result(true, pre.concat(rest))
-    return result(false, [], `Bu durumdan çözüm bulunamadı (en iyi: ${c.best}/${game.settings.needed} elmas)`)
+    return result(false, [], 'Bu durumdan çözüm bulunamadı')
   } catch (e) {
-    if (e instanceof Timeout) return result(false, [], `Süre yetmedi, çözüm bulunamadı (en iyi: ${c.best}/${game.settings.needed} elmas)`)
+    if (e instanceof Timeout) return result(false, [], 'Süre yetmedi')
     throw e
   }
 }
+export const _attempt = attempt
