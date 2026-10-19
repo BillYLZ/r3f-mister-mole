@@ -3,6 +3,8 @@ import { T, cloneGame, createGame, step, tilesFromRows, at, countTiles, type Cav
 import { CAVES, W, H, buildCave, caveSeed, diamondPotential } from '../src/levels.ts'
 import { findBarRuns } from '../src/v3/bricks.ts'
 import { solve } from '../src/solver.ts'
+import { decodeInputs } from '../src/solutions.ts'
+import SOLUTIONS from '../src/solutions.json' with { type: 'json' }
 
 let failed = 0
 function check(name: string, ok: boolean, info = '') {
@@ -77,6 +79,17 @@ const run = (g: Game, n: number, input = NONE) => {
   step(g, { dir: 1, snap: false })
   step(g, { dir: 1, snap: false })
   check('açık kapıdan çıkılır', g.status === 'won')
+}
+
+// Kural: haritada elmas kaldıkça kapı açılmaz (gerekli sayı toplanmış olsa bile)
+{
+  const g = game(['WWWWWWWWW', 'WPd.d.X.W', 'WWWWWWWWW'], { ...settings, needed: 1 })
+  run(g, 15)
+  step(g, { dir: 1, snap: false })
+  check('bir elmas kaldıkça kapı kapalı', g.diamonds === 1 && !g.exitOpen)
+  step(g, { dir: 1, snap: false })
+  step(g, { dir: 1, snap: false })
+  check('son elmas toplanınca kapı açılır', g.diamonds === 2 && g.exitOpen)
 }
 
 // Yerinde kazma (snap): oyuncu kıpırdamaz
@@ -238,22 +251,29 @@ for (const cave of CAVES) {
   check(`  rastgele 2000 tick: en fazla bir oyuncu`, maxPlayers <= 1)
 }
 
-// Çözücü: varsayılan mağaralar çözülmeli ve çözüm aynen oynatılınca kazanmalı.
-// 5. mağara (Sihirli Duvar) orijinal haliyle çözümsüz: çözücü bunu söylemeli.
+// Önceden hesaplanmış çözümler (çözüm düğmesi olan mağaralar): aynen oynatılınca
+// kazanmalı ve kural gereği bütün elmasları toplamalı. Mağaralar değişirse bu
+// test bozulur: scripts/make-solutions.ts ile yeniden üretin.
 CAVES.forEach((cave, i) => {
+  const stored = (SOLUTIONS as Record<string, string>)[i]
+  if (!cave.solvable) {
+    check(`"${cave.name}": çözümü yok, kayıtlı çözüm de yok`, !stored)
+    return
+  }
   const g = createGame(W, H, buildCave(cave), cave)
-  const solvable = i !== 4
-  const sol = solve(g, { maxMs: solvable ? 20000 : 3000 })
+  const onMap = g.cells.filter((c) => c.t === T.DIAMOND).length
+  for (const inp of decodeInputs(stored ?? '')) step(g, inp)
+  check(`kayıtlı çözüm: "${cave.name}"`, g.status === 'won' && g.diamonds >= onMap, `${g.diamonds} elmas (haritada ${onMap})`)
+})
+{
+  // Çözücü canlı da çalışmalı: 1. mağara, bütün elmaslar
+  const g = createGame(W, H, buildCave(CAVES[0]), CAVES[0])
+  const onMap = g.cells.filter((c) => c.t === T.DIAMOND).length
+  const sol = solve(g, { maxMs: 20000 })
   const replay = cloneGame(g)
   for (const inp of sol.inputs) step(replay, inp)
-  const info = `${sol.inputs.length} tick, ${replay.diamonds} elmas, ${sol.ms} ms${sol.reason ? ', ' + sol.reason : ''}`
-  if (solvable) check(`çözücü: "${cave.name}"`, sol.ok && replay.status === 'won', info)
-  else check(`çözücü: "${cave.name}" çözümsüz, düzgünce bildirir`, !sol.ok && !sol.inputs.length && !!sol.reason, info)
-  if (i === 0) {
-    const onMap = g.cells.filter((c) => c.t === T.DIAMOND).length
-    check('çözücü: 1. mağarada bütün elmaslar toplanır', sol.allGems && replay.diamonds === onMap, `${replay.diamonds}/${onMap}`)
-  }
-})
+  check('çözücü: "İlk Kazı" canlı', sol.ok && replay.status === 'won' && replay.diamonds === onMap, `${replay.diamonds}/${onMap}, ${sol.ms} ms`)
+}
 {
   // Oyunun ortasından da çözebilmeli: birkaç hamle oynanmış 1. mağara
   const g = createGame(W, H, buildCave(CAVES[0]), CAVES[0])

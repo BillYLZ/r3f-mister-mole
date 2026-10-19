@@ -35,24 +35,18 @@ Ana menüden üç görünüm arasında seçim yapılır; seçim tarayıcıda hat
 - **Mağaralar** (`src/levels.ts`): klasik oyunlardaki gibi tohumlu rastgele dolgu üzerine çizim komutlarıyla üretilen 6 mağara.
 - **Görünüm**: instanced mesh'ler, iki tick arasında yumuşak hareket, gölgeler, bloom, parçacıklar, kafa lambalı madenci, kamera takibi ve sarsıntı. Sesler Web Audio ile sentezlenir. Dokunmatik ekranlar için yön tuşları vardır.
 
+## Kural: bütün elmaslar
+
+Çıkış kapısı, mağaradaki **bütün elmaslar toplanınca** açılır (haritada elmas kalmayınca; kelebek patlamasından çıkacak elmaslar da beklenir). Elmasların sonradan ortaya çıktığı mağaralarda ayrıca mağaranın gerekli sayısı da tutmalıdır. Göstergede toplanan / toplam elmas yazar.
+
 ## Çözüm düğmesi
 
-Sağ üstteki **💡 Çözüm** düğmesi (kısayol **H**) üç sürümde de çalışır: o anki durumdan mağaranın çözümünü bulur, karakterin gideceği yolu parlak noktalarla çizer ve hamleleri kendisi yapar. **■ Durdur** ya da herhangi bir yön tuşu kontrolü oyuncuya geri verir.
+Sağ üstteki **💡 Çözüm** düğmesi (kısayol **H**) üç sürümde de, yalnızca **çözümü olan mağaralarda** ve varsayılan haritada görünür: 1. İlk Kazı, 3. Kelebek Bahçesi, 4. Yeşil Tehdit ve 6. Çığ. Basınca karakterin gideceği yol noktalarla çizilir ve hamleleri kendisi yapar; çözüm bütün elmasları toplar. **■ Durdur** ya da herhangi bir yön tuşu kontrolü oyuncuya geri verir.
 
-Çözücü (`src/solver.ts`) oyunun kopyasını motorla adım adım ileri simüle eder; motor belirlenimci olduğu için bulunan hamleler gerçek oyunda aynen oynanınca aynı sonucu verir. Aranan hamleler: en yakın elmasa en kısa yoldan gitmek (her adım simüle edilir, ölümle biten adımlar elenir), taş itmek, altındaki toprağı yandan kazarak taş düşürmek (kelebek ezmek ya da sihirli duvardan elmas elde etmek için) ve tıkanan yolları açmak için keşif. Çıkmaz sokakta geri dönülür. Arama ayrı bir iş parçacığında (Web Worker) çalışır, en fazla 10 saniye sürer.
+- Bu mağaraların başlangıçtan çözümleri önceden hesaplanıp oyuna gömülüdür (`src/solutions.json`, `scripts/make-solutions.ts` üretir). Oyuncu henüz hamle yapmadıysa çözüm anında başlar; zaman geçmişse mağara can kaybetmeden baştan kurulur.
+- Mağaranın ortasında basılırsa çözücü (`src/solver.ts`) o andan canlı çözüm arar (ayrı iş parçacığında, en fazla 25 saniye). Oyunun kopyasını motorla adım adım ileri simüle eder; motor belirlenimci olduğu için bulunan hamleler gerçek oyunda aynen oynanınca aynı sonucu verir. Aranan hamleler: en yakın elmasa en kısa yoldan gitmek (her adım simüle edilir, ölümle biten adımlar elenir, yolu kesen düşmandan kaçmak), taş itmek, altındaki toprağı kazarak taş düşürmek (kelebek ezmek, sihirli duvardan elmas almak, gömülü elmasa yol açmak) ve keşif. Arama önce dar başlar, olmazsa elmas sırasını karıştırıp genişleyerek tekrarlar.
 
-Çözücü önce mağaradaki **bütün elmasları** toplayıp çıkan bir çözüm arar; bulamazsa kapıyı açacak kadar elmasla çıkan çözümü arar. Varsayılan mağaralarda:
-
-| Mağara | Sonuç |
-|---|---|
-| 1. İlk Kazı | çözülür, 37 elmasın hepsi toplanır |
-| 2. Ateşböceği Tünelleri | çözülür, gereken kadar elmasla |
-| 3. Kelebek Bahçesi | çözülür, bütün elmaslar |
-| 4. Yeşil Tehdit | çözülür, bütün elmaslar |
-| 5. Sihirli Duvar | çözüm bulunamaz (mağara bu haliyle çözümsüz) |
-| 6. Çığ | çözülür |
-
-Testler bunu ve çözümlerin tekrar oynatılınca kazandığını doğrular. Başka harita tohumlarında çözücü her zaman çözüm bulamayabilir; bulamazsa bunu söyler.
+Testler, kayıtlı çözümlerin tekrar oynatılınca bütün elmasları toplayıp kazandığını ve çözücünün canlı da çalıştığını doğrular. Mağaralar değişirse kayıtlı çözümler `node --experimental-strip-types scripts/make-solutions.ts` ile yeniden üretilmelidir.
 
 ## Harita tohumu
 

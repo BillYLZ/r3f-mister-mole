@@ -52,7 +52,7 @@ export default function App() {
           st.toggle('overview')
           break
         case 'KeyH':
-          if (st.screen === 'playing') startSolve()
+          if (st.screen === 'playing' && CAVES[st.level].solvable && caveSeed(st.level, st.seed) === CAVES[st.level].seed) startSolve()
           break
       }
     }
@@ -417,6 +417,11 @@ function SeedPicker() {
 function SolveButton() {
   const solve = useGame((s) => s.solve)
   const message = useGame((s) => s.solveMessage)
+  const level = useGame((s) => s.level)
+  const seed = useGame((s) => s.seed)
+  // Yalnızca çözücünün çözebildiği mağaralarda ve varsayılan haritada
+  const cave = CAVES[level]
+  if (!cave.solvable || caveSeed(level, seed) !== cave.seed) return null
   const label = solve === 'solving' ? '⏳ Çözülüyor' : solve === 'running' ? '■ Durdur' : '💡 Çözüm'
   return (
     <>

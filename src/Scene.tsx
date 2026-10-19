@@ -4,7 +4,7 @@ import { useEffect, useMemo, useRef } from 'react'
 import { useFrame, useThree } from '@react-three/fiber'
 import * as THREE from 'three'
 import { RoundedBoxGeometry } from 'three/examples/jsm/geometries/RoundedBoxGeometry.js'
-import { T, TICKS_PER_SECOND, createGame, step, timeLeft, type Game, type GameEvent, type Input } from './engine.ts'
+import { T, TICKS_PER_SECOND, createGame, diamondsLeft, step, timeLeft, type Game, type GameEvent, type Input } from './engine.ts'
 import { CAVES, W, H, buildCave, caveSeed } from './levels.ts'
 import { useGame } from './store.ts'
 import { clearInput, takeInput } from './input.ts'
@@ -243,7 +243,7 @@ export function Scene() {
           s.endTimer = g.status === 'won' ? 1.2 : 2.2
         }
         if (live)
-          st.setHud({ diamonds: g.diamonds, needed: g.settings.needed, value: g.exitOpen ? g.settings.extra : g.settings.value, time: tl, score: st.totalScore + g.score, exitOpen: g.exitOpen })
+          st.setHud({ diamonds: g.diamonds, needed: Math.max(g.settings.needed, g.diamonds + diamondsLeft(g)), value: g.exitOpen ? g.settings.extra : g.settings.value, time: tl, score: st.totalScore + g.score, exitOpen: g.exitOpen })
       }
       if (live && s.ended && s.endTimer > 0) {
         s.endTimer -= dt

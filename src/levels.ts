@@ -15,6 +15,7 @@ export interface Cave extends CaveSettings {
   draw: Draw[]
   start: [number, number]
   exit: [number, number]
+  solvable?: boolean // çözücü varsayılan haritayı çözebiliyor: çözüm düğmesi görünür (testlerle doğrulanır)
 }
 
 export const W = 40
@@ -47,6 +48,7 @@ const cage = (enemy: Tile, x: number, y: number, w = 4, h = 3): Draw[] => [
 export const CAVES: Cave[] = [
   {
     name: 'İlk Kazı',
+    solvable: true,
     hint: 'Toprağı kaz, elmasları topla. Taşların altından çabuk çekil!',
     seed: 101,
     needed: 12,
@@ -88,6 +90,7 @@ export const CAVES: Cave[] = [
   },
   {
     name: 'Kelebek Bahçesi',
+    solvable: true,
     hint: 'Kelebek patlayınca 9 elmas bırakır. Kafesin üstündeki toprağı Shift+yön ile yandan kaz, taş kelebeğe düşsün.',
     seed: 303,
     needed: 22,
@@ -110,6 +113,7 @@ export const CAVES: Cave[] = [
   },
   {
     name: 'Yeşil Tehdit',
+    solvable: true,
     hint: 'Amip büyüyor. Kafesin tavanındaki deliği taşla tıka: hapsolan amip elmasa dönüşür. 200 hücreyi aşarsa taşa döner.',
     seed: 404,
     needed: 25,
@@ -162,6 +166,7 @@ export const CAVES: Cave[] = [
   },
   {
     name: 'Çığ',
+    solvable: true,
     hint: 'Her yer taş. Bir kayarsa hepsi kayar.',
     seed: 606,
     needed: 30,
