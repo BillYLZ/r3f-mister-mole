@@ -7,7 +7,7 @@ import { Scene } from './Scene.tsx'
 import { SceneV2 } from './v2/SceneV2.tsx'
 import { SceneV3 } from './v3/SceneV3.tsx'
 import { useGame, LIVES } from './store.ts'
-import { CAVES, SEED_MAX } from './levels.ts'
+import { CAVES, SEED_MAX, caveSeed } from './levels.ts'
 import { keyDir, press, release, setSnap, clearInput } from './input.ts'
 import { setMuted, unlockAudio } from './sfx.ts'
 
@@ -206,7 +206,10 @@ function Overlay() {
         {screen === 'playing' && paused && (
           <>
             <h2>Duraklatıldı</h2>
-            <p className="bd-dim">Harita tohumu: {seed === null ? 'varsayılan' : seed}</p>
+            <p className="bd-dim">
+              Bu mağaranın tohumu: {caveSeed(level, seed)}
+              {seed === null ? ' (varsayılan)' : ''}
+            </p>
             {cont('Devam')}
             <div className="bd-row">
               <button className="bd-secondary" onClick={restartCave}>
@@ -390,7 +393,7 @@ function SeedPicker() {
         id="bd-seed-input"
         inputMode="numeric"
         autoComplete="off"
-        placeholder="varsayılan"
+        placeholder="101 (varsayılan)"
         value={seed === null ? '' : String(seed)}
         onChange={(e) => onText(e.target.value)}
       />

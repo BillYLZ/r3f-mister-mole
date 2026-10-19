@@ -40,8 +40,8 @@ Ana menüden üç görünüm arasında seçim yapılır; seçim tarayıcıda hat
 Mağaralar orijinal oyundaki gibi tohumlu rastgele dolgu ile üretilir: aynı tohum her seferinde aynı haritayı verir. Ana menüdeki **Harita tohumu** kutusu:
 
 - **Boş (varsayılan):** her mağara kendi tasarlanmış haritasıyla açılır.
-- **Bir sayı:** tüm mağaralar o sayıdan türetilen yeni haritalarla oynanır (her mağara farklı). Aynı sayıyı giren herkes aynı haritaları alır.
-- **🎲** rastgele bir tohum seçer, **Varsayılan** geri döner. Seçim tarayıcıda hatırlanır; duraklatma menüsünde o anki tohum görünür.
+- **Bir sayı:** 1. mağara o sayıyı, sonraki her mağara 101 fazlasını tohum olarak kullanır. Varsayılan tohumlar 101, 202, 303, 404, 505, 606 olduğu için **101** girmek varsayılan haritaları verir. Aynı sayıyı giren herkes aynı haritaları alır.
+- **🎲** rastgele bir tohum seçer, **Varsayılan** geri döner. Seçim tarayıcıda hatırlanır; duraklatma menüsünde o mağaranın tohumu görünür.
 
 Başka bir tohum yeterli elmas vermezse eksik elmaslar rastgele toprak hücrelere eklenir, böylece her harita bitirilebilir kalır.
 

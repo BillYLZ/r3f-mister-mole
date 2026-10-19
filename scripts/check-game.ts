@@ -185,6 +185,7 @@ const run = (g: Game, n: number, input = NONE) => {
   check('aynı tohum hep aynı haritayı verir', a === buildCave(CAVES[0], caveSeed(0, 12345)).join())
   check('farklı tohum farklı harita verir', a !== buildCave(CAVES[0], caveSeed(0, 12346)).join())
   check('aynı tohum her mağarada farklı tohuma döner', new Set(CAVES.map((_, i) => caveSeed(i, 42))).size === CAVES.length)
+  check('101 girilince varsayılan haritalar gelir', CAVES.every((c, i) => buildCave(c, caveSeed(i, 101)).join() === buildCave(c).join()))
   let bad = ''
   for (let k = 0; k < 300 && !bad; k++) {
     const user = Math.floor(Math.random() * 1_000_000_000)

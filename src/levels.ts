@@ -188,16 +188,17 @@ export const CAVES: Cave[] = [
 /** Kullanıcının girebileceği en büyük harita tohumu. */
 export const SEED_MAX = 999_999_999
 
+/** Mağaralar arası tohum farkı: varsayılan tohumlar 101, 202, 303… */
+export const SEED_STEP = 101
+
 /**
  * Mağaranın harita tohumu. Kullanıcı tohumu yoksa mağaranın kendi (varsayılan)
- * tohumu; varsa kullanıcı tohumu ve mağara sırasından türetilen sayı. Böylece
- * aynı kullanıcı tohumu her mağarada farklı ama her seferinde aynı harita verir.
+ * tohumu. Varsa: 1. mağara girilen sayıyı, sonraki her mağara 101 fazlasını
+ * kullanır. Böylece 101 girilince varsayılan haritalar gelir.
  */
 export function caveSeed(level: number, userSeed: number | null): number {
   if (userSeed === null) return CAVES[level].seed ?? 1
-  let h = (Math.imul(userSeed ^ 0x9e3779b9, 0x85ebca6b) + Math.imul(level + 1, 0xc2b2ae35)) >>> 0
-  h = Math.imul(h ^ (h >>> 13), 0x27d4eb2d) >>> 0
-  return (h ^ (h >>> 16)) >>> 0
+  return userSeed + level * SEED_STEP
 }
 
 /**
